@@ -116,6 +116,19 @@ export async function getPoHistory(req, res, next) {
   }
 }
 
+export async function getAllHistory(req, res, next) {
+  try {
+    const filters = {};
+    if (req.user.role === 'VENDOR') {
+      filters.vendor_id = req.user.vendor_id;
+    }
+    const history = await poService.getAllHistory(filters);
+    res.json(history);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function updateLineItemPriority(req, res, next) {
   try {
     const { priority } = req.body;

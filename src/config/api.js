@@ -40,14 +40,21 @@ export const api = {
   },
 
   admin: {
+    getDashboardStats: () => apiRequest('/admin/dashboard/stats'),
+    getAllHistory: () => apiRequest('/admin/history'),
     getPos: (params) => {
       const query = new URLSearchParams(params).toString();
       return apiRequest(`/admin/pos${query ? `?${query}` : ''}`);
     },
     getPoById: (id) => apiRequest(`/admin/pos/${id}`),
+    getPoHistory: (id) => apiRequest(`/admin/pos/${id}/history`),
     updatePoPriority: (id, priority) => apiRequest(`/admin/pos/${id}/priority`, {
       method: 'PUT',
       body: JSON.stringify({ priority })
+    }),
+    updatePoClosure: (id, closureData) => apiRequest(`/admin/pos/${id}/closure`, {
+      method: 'PUT',
+      body: JSON.stringify(closureData)
     }),
     updateLineItemPriority: (poId, lineItemId, priority) => apiRequest(
       `/admin/pos/${poId}/line-items/${lineItemId}/priority`,
@@ -56,7 +63,20 @@ export const api = {
         body: JSON.stringify({ priority })
       }
     ),
-    getVendors: () => apiRequest('/admin/vendors'),
+    getLineItems: (params) => {
+      const query = new URLSearchParams(params).toString();
+      return apiRequest(`/admin/line-items${query ? `?${query}` : ''}`);
+    },
+    getVendors: (params) => {
+      const query = new URLSearchParams(params).toString();
+      return apiRequest(`/admin/vendors${query ? `?${query}` : ''}`);
+    },
+    approveVendor: (id) => apiRequest(`/admin/vendors/${id}/approve`, {
+      method: 'POST'
+    }),
+    rejectVendor: (id) => apiRequest(`/admin/vendors/${id}/reject`, {
+      method: 'POST'
+    }),
     createVendor: (vendorData) => apiRequest('/admin/vendors', {
       method: 'POST',
       body: JSON.stringify(vendorData)
@@ -72,11 +92,14 @@ export const api = {
   },
 
   vendor: {
+    getDashboardStats: () => apiRequest('/vendor/dashboard/stats'),
+    getAllHistory: () => apiRequest('/vendor/history'),
     getPos: (params) => {
       const query = new URLSearchParams(params).toString();
       return apiRequest(`/vendor/pos${query ? `?${query}` : ''}`);
     },
     getPoById: (id) => apiRequest(`/vendor/pos/${id}`),
+    getPoHistory: (id) => apiRequest(`/vendor/pos/${id}/history`),
     acceptPo: (id, lineItems) => apiRequest(`/vendor/pos/${id}/accept`, {
       method: 'POST',
       body: JSON.stringify({ line_items: lineItems })
@@ -94,6 +117,16 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ status })
       }
-    )
-  }
+    ),
+    getLineItems: (params) => {
+      const query = new URLSearchParams(params).toString();
+      return apiRequest(`/vendor/line-items${query ? `?${query}` : ''}`);
+    }
+  },
+
+  publicVendorSignup: (vendorData) => apiRequest('/public/vendor-signup', {
+    method: 'POST',
+    body: JSON.stringify(vendorData)
+  })
+
 };

@@ -276,3 +276,88 @@ export async function getPoHistory(poId) {
 
   return allHistory;
 }
+
+export async function getAllHistory(filters = {}) {
+  const db = getDbClient();
+
+  let poHistoryQuery = db
+    .from('po_history')
+    .select(`
+      *,
+      users:changed_by_user_id (
+        name,
+        email
+      ),
+      purchase_orders:po_id (
+        po_number,
+        vendor_id,
+        vendors:vendor_id (
+          name
+        )
+      )
+    `)
+    .order('changed_at', { ascending: false });
+
+  let lineItemHistoryQuery = db
+    .from('po_line_item_history')
+    .select(`
+      *,
+      users:changed_by_user_id (
+        name,
+        email
+      ),
+      purchase_order_line_items:line_item_id (
+        product_code,
+        product_name,
+        po_id
+      ),
+      purchase_orders!inner(
+        po_number,
+        vendor_id,
+        vendors:vendor_id (
+          name
+        )
+      )
+    `)
+    .order('changed_at', { ascending: false });
+
+  if (filters.vendor_id) {
+    poHistoryQuery = poHistoryQuery.eq('purchase_orders.vendor_id', filters.vendor_id);
+    lineItemHistoryQuery = lineItemHistoryQuery.eq('purchase_orders.vendor_id', filters.vendor_id);
+  }
+
+  const [poHistoryResult, lineItemHistoryResult] = await Promise.all([
+    poHistoryQuery,
+    lineItemHistoryQuery
+  ]);
+
+  if (poHistoryResult.error) throw poHistoryResult.error;
+  if (lineItemHistoryResult.error) throw lineItemHistoryResult.error;
+
+  const poHistory = poHistoryResult.data.map(h => ({
+    ...h,
+    level: 'PO',
+    po_number: h.purchase_orders?.po_number || 'Unknown',
+    vendor_name: h.purchase_orders?.vendors?.name || 'Unknown',
+    changed_by_name: h.users?.name || 'Unknown',
+    line_item_reference: null
+  }));
+
+  const lineItemHistory = lineItemHistoryResult.data.map(h => ({
+    ...h,
+    level: 'LINE_ITEM',
+    po_number: h.purchase_orders?.po_number || 'Unknown',
+    vendor_name: h.purchase_orders?.vendors?.name || 'Unknown',
+    po_id: h.purchase_order_line_items?.po_id,
+    changed_by_name: h.users?.name || 'Unknown',
+    line_item_reference: h.purchase_order_line_items
+      ? `${h.purchase_order_line_items.product_code} - ${h.purchase_order_line_items.product_name}`
+      : 'Unknown Item'
+  }));
+
+  const allHistory = [...poHistory, ...lineItemHistory].sort(
+    (a, b) => new Date(b.changed_at) - new Date(a.changed_at)
+  );
+
+  return allHistory;
+}

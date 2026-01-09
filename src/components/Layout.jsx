@@ -1,30 +1,69 @@
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { LogOut, Package } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { LogOut, Package, LayoutDashboard, List, History, Users } from 'lucide-react';
 
-export function Layout({ children }) {
+export function Layout({ children, role }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+  const adminMenuItems = [
+    { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/admin/line-items', label: 'Line Items', icon: List },
+    { path: '/admin/history', label: 'History', icon: History },
+    { path: '/admin/vendors', label: 'Vendors', icon: Users },
+  ];
+
+  const vendorMenuItems = [
+    { path: '/vendor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/vendor/line-items', label: 'Line Items', icon: List },
+    { path: '/vendor/history', label: 'History', icon: History },
+  ];
+
+  const menuItems = role === 'admin' ? adminMenuItems : vendorMenuItems;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <Package className="w-8 h-8 text-blue-600" />
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">
-                  Vendor Management System
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {user?.role === 'ADMIN' ? 'Admin Portal' : 'Vendor Portal'}
-                </p>
+            <div className="flex items-center space-x-8">
+              <div className="flex items-center space-x-3">
+                <Package className="w-8 h-8 text-blue-600" />
+                <div>
+                  <h1 className="text-xl font-semibold text-gray-900">
+                    Vendor Management System
+                  </h1>
+                  <p className="text-sm text-gray-500">
+                    {user?.role === 'ADMIN' ? 'Admin Portal' : 'Vendor Portal'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="hidden md:flex space-x-1">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => navigate(item.path)}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-600'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

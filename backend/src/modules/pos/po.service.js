@@ -200,3 +200,7 @@ export async function getPoHistory(poId) {
 
   return await poRepository.getPoHistory(poId);
 }
+
+export async function getAllHistory(filters = {}) {
+  return await poRepository.getAllHistory(filters);
+}

@@ -10,6 +10,8 @@ import { adminRouter as adminDashboardRoutes, vendorRouter as vendorDashboardRou
 import erpRoutes from './modules/erp/erp.routes.js';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
 import { logger } from './utils/logger.js';
+import { authMiddleware, requireAdmin, requireVendor } from './middlewares/auth.middleware.js';
+import { getAllHistory } from './modules/pos/po.controller.js';
 
 const app = express();
 
@@ -37,6 +39,9 @@ app.use('/vendor/pos', vendorPoRoutes);
 app.use('/vendor/line-items', vendorLineItemRoutes);
 app.use('/vendor/dashboard', vendorDashboardRoutes);
 app.use('/erp', erpRoutes);
+
+app.get('/admin/history', authMiddleware, requireAdmin, getAllHistory);
+app.get('/vendor/history', authMiddleware, requireVendor, getAllHistory);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

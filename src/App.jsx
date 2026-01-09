@@ -7,9 +7,11 @@ import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminPoDetail } from './pages/admin/AdminPoDetail';
 import { VendorManagement } from './pages/admin/VendorManagement';
 import { AdminLineItems } from './pages/admin/AdminLineItems';
+import { AdminHistory } from './pages/admin/AdminHistory';
 import { VendorDashboard } from './pages/vendor/VendorDashboard';
 import { VendorPoDetail } from './pages/vendor/VendorPoDetail';
 import { VendorLineItems } from './pages/vendor/VendorLineItems';
+import { VendorHistory } from './pages/vendor/VendorHistory';
 
 function App() {
   return (
@@ -56,6 +58,15 @@ function App() {
           />
 
           <Route
+            path="/admin/history"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminHistory />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/vendor/dashboard"
             element={
               <ProtectedRoute allowedRoles={['VENDOR']}>
@@ -69,6 +80,15 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['VENDOR']}>
                 <VendorLineItems />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/vendor/history"
+            element={
+              <ProtectedRoute allowedRoles={['VENDOR']}>
+                <VendorHistory />
               </ProtectedRoute>
             }
           />
