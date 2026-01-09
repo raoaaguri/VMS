@@ -1,6 +1,6 @@
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Package, LayoutDashboard, List, History, Users } from 'lucide-react';
+import { LogOut, LayoutDashboard, List, History, Users } from 'lucide-react';
 
 export function Layout({ children, role }) {
   const { user, logout } = useAuth();
@@ -34,7 +34,7 @@ export function Layout({ children, role }) {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-8">
               <div className="flex items-center space-x-3">
-                <Package className="w-8 h-8 text-blue-600" />
+                <img src="https://ditos.technoboost.in/images/bag.svg" alt="VMS Logo" className="w-8 h-8" />
                 <div>
                   <h1 className="text-xl font-semibold text-gray-900">
                     Vendor Management System
