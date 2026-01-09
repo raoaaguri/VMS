@@ -67,15 +67,30 @@ export async function updatePoPriority(id, priority, user) {
   return updatedPo;
 }
 
-export async function updatePoStatus(id, status) {
+export async function updatePoStatus(id, status, user) {
   const po = await poRepository.findById(id);
 
   if (!po) throw new NotFoundError('Purchase order not found');
 
-  return await poRepository.update(id, { status });
+  const oldStatus = po.status;
+  const updatedPo = await poRepository.update(id, { status });
+
+  if (oldStatus !== status && user) {
+    await poRepository.createPoHistory({
+      po_id: id,
+      changed_by_user_id: user.id,
+      changed_by_role: user.role,
+      action_type: 'STATUS_CHANGE',
+      field_name: 'status',
+      old_value: oldStatus,
+      new_value: status
+    });
+  }
+
+  return updatedPo;
 }
 
-export async function acceptPo(id, lineItemUpdates) {
+export async function acceptPo(id, lineItemUpdates, user) {
   const po = await poRepository.findById(id);
 
   if (!po) throw new NotFoundError('Purchase order not found');
@@ -89,9 +104,49 @@ export async function acceptPo(id, lineItemUpdates) {
       throw new BadRequestError('Expected delivery date is required for all line items');
     }
 
+    const oldItem = await poRepository.findLineItemById(update.line_item_id);
+
     await poRepository.updateLineItem(update.line_item_id, {
       expected_delivery_date: update.expected_delivery_date,
       status: 'ACCEPTED'
+    });
+
+    if (user) {
+      // Create history for status change
+      await poRepository.createLineItemHistory({
+        po_id: id,
+        line_item_id: update.line_item_id,
+        changed_by_user_id: user.id,
+        changed_by_role: user.role,
+        action_type: 'STATUS_CHANGE',
+        field_name: 'status',
+        old_value: 'CREATED',
+        new_value: 'ACCEPTED'
+      });
+
+      // Create history for expected delivery date
+      await poRepository.createLineItemHistory({
+        po_id: id,
+        line_item_id: update.line_item_id,
+        changed_by_user_id: user.id,
+        changed_by_role: user.role,
+        action_type: 'EXPECTED_DATE_CHANGE',
+        field_name: 'expected_delivery_date',
+        old_value: oldItem.expected_delivery_date || null,
+        new_value: update.expected_delivery_date
+      });
+    }
+  }
+
+  if (user) {
+    await poRepository.createPoHistory({
+      po_id: id,
+      changed_by_user_id: user.id,
+      changed_by_role: user.role,
+      action_type: 'STATUS_CHANGE',
+      field_name: 'status',
+      old_value: 'CREATED',
+      new_value: 'ACCEPTED'
     });
   }
 

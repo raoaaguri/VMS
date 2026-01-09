@@ -49,7 +49,7 @@ export async function updatePoPriority(req, res, next) {
 export async function updatePoStatus(req, res, next) {
   try {
     const { status } = req.body;
-    const po = await poService.updatePoStatus(req.params.id, status);
+    const po = await poService.updatePoStatus(req.params.id, status, req.user);
     res.json(po);
   } catch (error) {
     next(error);
@@ -59,7 +59,7 @@ export async function updatePoStatus(req, res, next) {
 export async function acceptPo(req, res, next) {
   try {
     const { line_items } = req.body;
-    const po = await poService.acceptPo(req.params.id, line_items);
+    const po = await poService.acceptPo(req.params.id, line_items, req.user);
     res.json(po);
   } catch (error) {
     next(error);
