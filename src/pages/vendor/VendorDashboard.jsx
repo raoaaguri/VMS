@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { api } from '../../config/api';
-import { Package, Filter, Eye, Calendar } from 'lucide-react';
+import { Package, Filter, Eye, CheckCircle, AlertCircle } from 'lucide-react';
 
 const STATUSES = ['CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED'];
 
@@ -25,11 +25,14 @@ export function VendorDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [stats, setStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     loadPos();
+    loadStats();
   }, [statusFilter]);
 
   const loadPos = async () => {
@@ -44,6 +47,18 @@ export function VendorDashboard() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      setLoadingStats(true);
+      const data = await api.vendor.getDashboardStats();
+      setStats(data);
+    } catch (err) {
+      console.error('Failed to load stats:', err);
+    } finally {
+      setLoadingStats(false);
     }
   };
 
@@ -63,15 +78,65 @@ export function VendorDashboard() {
   };
 
   return (
-    <Layout>
+    <Layout role="vendor">
       <div className="space-y-6">
         <div className="flex items-center space-x-3">
           <Package className="w-8 h-8 text-blue-600" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Purchase Orders</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Vendor Dashboard</h1>
             <p className="text-gray-500 text-sm">View and manage your purchase orders</p>
           </div>
         </div>
+
+        {!loadingStats && stats && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">On-Time (This Month)</p>
+                  <p className="text-3xl font-bold text-green-600 mt-2">{stats.on_time_line_item_count_this_month}</p>
+                </div>
+                <div className="bg-green-100 rounded-full p-3">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Delayed (This Month)</p>
+                  <p className="text-3xl font-bold text-red-600 mt-2">{stats.delayed_line_item_count_this_month}</p>
+                </div>
+                <div className="bg-red-100 rounded-full p-3">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <h4 className="text-sm font-medium text-gray-600 mb-3">Open POs by Priority</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Low:</span>
+                  <span className="font-semibold text-gray-900">{stats.open_pos_by_priority.LOW}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-blue-600">Medium:</span>
+                  <span className="font-semibold text-blue-900">{stats.open_pos_by_priority.MEDIUM}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-orange-600">High:</span>
+                  <span className="font-semibold text-orange-900">{stats.open_pos_by_priority.HIGH}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-red-600">Urgent:</span>
+                  <span className="font-semibold text-red-900">{stats.open_pos_by_priority.URGENT}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-center space-x-4">

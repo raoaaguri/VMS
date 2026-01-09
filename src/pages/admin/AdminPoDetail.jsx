@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { api } from '../../config/api';
-import { ArrowLeft, Package, Building, Calendar, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Package, Building, Calendar, AlertCircle, History, X, Filter } from 'lucide-react';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 
@@ -29,6 +29,11 @@ export function AdminPoDetail() {
   const [error, setError] = useState('');
   const [editingPoPriority, setEditingPoPriority] = useState(false);
   const [editingLineItem, setEditingLineItem] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [lineItemFilters, setLineItemFilters] = useState({ status: 'ALL', priority: 'ALL' });
+  const [closureData, setClosureData] = useState({ closure_status: 'OPEN', closed_amount: 0 });
 
   useEffect(() => {
     loadPo();
@@ -39,10 +44,37 @@ export function AdminPoDetail() {
       setLoading(true);
       const data = await api.admin.getPoById(id);
       setPo(data);
+      setClosureData({
+        closure_status: data.closure_status || 'OPEN',
+        closed_amount: data.closed_amount || 0
+      });
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const data = await api.admin.getPoHistory(id);
+      setHistory(data);
+      setShowHistory(true);
+    } catch (err) {
+      alert('Failed to load history: ' + err.message);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const updateClosure = async () => {
+    try {
+      await api.admin.updatePoClosure(id, closureData);
+      alert('Closure updated successfully!');
+      loadPo();
+    } catch (err) {
+      alert('Failed to update closure: ' + err.message);
     }
   };
 
@@ -71,9 +103,15 @@ export function AdminPoDetail() {
     }
   };
 
+  const filteredLineItems = (po?.line_items || []).filter(item => {
+    if (lineItemFilters.status !== 'ALL' && item.status !== lineItemFilters.status) return false;
+    if (lineItemFilters.priority !== 'ALL' && item.line_priority !== lineItemFilters.priority) return false;
+    return true;
+  });
+
   if (loading) {
     return (
-      <Layout>
+      <Layout role="admin">
         <div className="text-center py-12">Loading...</div>
       </Layout>
     );
@@ -81,7 +119,7 @@ export function AdminPoDetail() {
 
   if (error || !po) {
     return (
-      <Layout>
+      <Layout role="admin">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
           {error || 'PO not found'}
         </div>
@@ -90,7 +128,7 @@ export function AdminPoDetail() {
   }
 
   return (
-    <Layout>
+    <Layout role="admin">
       <div className="space-y-6">
         <div>
           <button
@@ -110,9 +148,19 @@ export function AdminPoDetail() {
               </div>
             </div>
 
-            <span className={`px-3 py-1 text-sm font-medium rounded-full ${statusColors[po.status]}`}>
-              {po.status}
-            </span>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={loadHistory}
+                disabled={loadingHistory}
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                <History className="w-4 h-4" />
+                <span>{loadingHistory ? 'Loading...' : 'View History'}</span>
+              </button>
+              <span className={`px-3 py-1 text-sm font-medium rounded-full ${statusColors[po.status]}`}>
+                {po.status}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -221,7 +269,71 @@ export function AdminPoDetail() {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">PO Closure</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Closure Status</label>
+              <select
+                value={closureData.closure_status}
+                onChange={(e) => setClosureData({ ...closureData, closure_status: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="OPEN">Open</option>
+                <option value="PARTIALLY_CLOSED">Partially Closed</option>
+                <option value="CLOSED">Closed</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Closed Amount (INR)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={closureData.closed_amount}
+                onChange={(e) => setClosureData({ ...closureData, closed_amount: parseFloat(e.target.value) || 0 })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <button
+            onClick={updateClosure}
+            className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Update Closure
+          </button>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Line Items</h2>
+
+          <div className="flex gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <select
+                value={lineItemFilters.status}
+                onChange={(e) => setLineItemFilters({ ...lineItemFilters, status: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="CREATED">Created</option>
+                <option value="ACCEPTED">Accepted</option>
+                <option value="PLANNED">Planned</option>
+                <option value="DELIVERED">Delivered</option>
+              </select>
+            </div>
+
+            <select
+              value={lineItemFilters.priority}
+              onChange={(e) => setLineItemFilters({ ...lineItemFilters, priority: e.target.value })}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ALL">All Priorities</option>
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+              <option value="URGENT">Urgent</option>
+            </select>
+          </div>
 
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -239,7 +351,7 @@ export function AdminPoDetail() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {po.line_items.map(item => (
+                {filteredLineItems.map(item => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-900">{item.product_code}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{item.product_name}</td>
@@ -290,7 +402,69 @@ export function AdminPoDetail() {
               </tbody>
             </table>
           </div>
+
+          {filteredLineItems.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No line items match the selected filters
+            </div>
+          )}
         </div>
+
+        {showHistory && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">PO History</h2>
+              <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date/Time</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Performed By</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Level</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Field</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Old Value</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">New Value</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {history.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                        No history available
+                      </td>
+                    </tr>
+                  ) : (
+                    history.map((entry, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm whitespace-nowrap">
+                          {new Date(entry.changed_at).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {entry.users?.name} ({entry.changed_by_role})
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            entry.level === 'PO' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {entry.level}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm">{entry.field_name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-500">{entry.old_value || '-'}</td>
+                        <td className="px-4 py-3 text-sm font-medium">{entry.new_value || '-'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { api } from '../../config/api';
-import { Package, Filter, Eye } from 'lucide-react';
+import { Package, Filter, Eye, AlertCircle, Clock, CheckCircle, TrendingUp } from 'lucide-react';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 const STATUSES = ['CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED'];
@@ -26,11 +26,14 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [stats, setStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     loadPos();
+    loadStats();
   }, [statusFilter]);
 
   const loadPos = async () => {
@@ -48,29 +51,108 @@ export function AdminDashboard() {
     }
   };
 
+  const loadStats = async () => {
+    try {
+      setLoadingStats(true);
+      const data = await api.admin.getDashboardStats();
+      setStats(data);
+    } catch (err) {
+      console.error('Failed to load stats:', err);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
   const getLineItemCount = (po) => {
     return po.line_items?.length || 0;
   };
 
   return (
-    <Layout>
+    <Layout role="admin">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Package className="w-8 h-8 text-blue-600" />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
-              <p className="text-gray-500 text-sm">Manage all purchase orders</p>
+              <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+              <p className="text-gray-500 text-sm">Monitor purchase orders and performance</p>
             </div>
           </div>
-
-          <button
-            onClick={() => navigate('/admin/vendors')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
-            Manage Vendors
-          </button>
         </div>
+
+        {!loadingStats && stats && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Delayed POs</p>
+                  <p className="text-3xl font-bold text-red-600 mt-2">{stats.delayed_po_count}</p>
+                </div>
+                <div className="bg-red-100 rounded-full p-3">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Delivering Today</p>
+                  <p className="text-3xl font-bold text-blue-600 mt-2">{stats.delivering_today_po_count}</p>
+                </div>
+                <div className="bg-blue-100 rounded-full p-3">
+                  <Clock className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Delivered (Month)</p>
+                  <p className="text-3xl font-bold text-green-600 mt-2">{stats.delivered_po_counts.this_month}</p>
+                </div>
+                <div className="bg-green-100 rounded-full p-3">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">On-Time Rate</p>
+                  <p className="text-3xl font-bold text-green-600 mt-2">{stats.on_time_delivery_rate}%</p>
+                </div>
+                <div className="bg-green-100 rounded-full p-3">
+                  <TrendingUp className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6 col-span-full">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Open POs by Priority</h3>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <p className="text-2xl font-bold text-gray-600">{stats.open_pos_by_priority.LOW}</p>
+                  <p className="text-sm text-gray-500 mt-1">Low</p>
+                </div>
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <p className="text-2xl font-bold text-blue-600">{stats.open_pos_by_priority.MEDIUM}</p>
+                  <p className="text-sm text-blue-500 mt-1">Medium</p>
+                </div>
+                <div className="text-center p-4 bg-orange-50 rounded-lg">
+                  <p className="text-2xl font-bold text-orange-600">{stats.open_pos_by_priority.HIGH}</p>
+                  <p className="text-sm text-orange-500 mt-1">High</p>
+                </div>
+                <div className="text-center p-4 bg-red-50 rounded-lg">
+                  <p className="text-2xl font-bold text-red-600">{stats.open_pos_by_priority.URGENT}</p>
+                  <p className="text-sm text-red-500 mt-1">Urgent</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-center space-x-4">

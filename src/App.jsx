@@ -6,8 +6,10 @@ import VendorSignup from './pages/VendorSignup';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminPoDetail } from './pages/admin/AdminPoDetail';
 import { VendorManagement } from './pages/admin/VendorManagement';
+import { AdminLineItems } from './pages/admin/AdminLineItems';
 import { VendorDashboard } from './pages/vendor/VendorDashboard';
 import { VendorPoDetail } from './pages/vendor/VendorPoDetail';
+import { VendorLineItems } from './pages/vendor/VendorLineItems';
 
 function App() {
   return (
@@ -45,10 +47,28 @@ function App() {
           />
 
           <Route
+            path="/admin/line-items"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminLineItems />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/vendor/dashboard"
             element={
               <ProtectedRoute allowedRoles={['VENDOR']}>
                 <VendorDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/vendor/line-items"
+            element={
+              <ProtectedRoute allowedRoles={['VENDOR']}>
+                <VendorLineItems />
               </ProtectedRoute>
             }
           />
