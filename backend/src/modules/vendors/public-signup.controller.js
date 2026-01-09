@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import pool from '../../config/db.js';
+import { getDbClient } from '../../config/db.js';
 import { BadRequestError } from '../../utils/httpErrors.js';
 
 export const publicSignup = async (req, res, next) => {
@@ -32,52 +32,56 @@ export const publicSignup = async (req, res, next) => {
       throw new BadRequestError('Invalid email format');
     }
 
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
+    const db = getDbClient();
 
-      const existingUserQuery = 'SELECT id FROM users WHERE email = $1';
-      const existingUser = await client.query(existingUserQuery, [contactEmail]);
-      if (existingUser.rows.length > 0) {
+    try {
+      // Check if email already exists
+      const { data: existingUser, error: userCheckError } = await db
+        .from('users')
+        .select('id')
+        .eq('email', contactEmail)
+        .maybeSingle();
+
+      if (userCheckError) throw userCheckError;
+      if (existingUser) {
         throw new BadRequestError('Email already registered');
       }
 
-      const vendorInsertQuery = `
-        INSERT INTO vendors (
-          name, contact_person, contact_email, contact_phone,
-          address, gst_number, status, is_active, code
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, 'PENDING_APPROVAL', false, NULL)
-        RETURNING id
-      `;
+      // Create vendor
+      const { data: vendorData, error: vendorError } = await db
+        .from('vendors')
+        .insert([{
+          name: vendorName,
+          contact_person: contactPerson,
+          contact_email: contactEmail,
+          contact_phone: contactPhone || null,
+          address: address || null,
+          gst_number: gstNumber || null,
+          status: 'PENDING_APPROVAL',
+          is_active: false,
+          code: null
+        }])
+        .select('id')
+        .single();
 
-      const vendorResult = await client.query(vendorInsertQuery, [
-        vendorName,
-        contactPerson,
-        contactEmail,
-        contactPhone || null,
-        address || null,
-        gstNumber || null
-      ]);
+      if (vendorError) throw vendorError;
 
-      const vendorId = vendorResult.rows[0].id;
-
+      const vendorId = vendorData.id;
       const passwordHash = await bcrypt.hash(password, 10);
 
-      const userInsertQuery = `
-        INSERT INTO users (name, email, password_hash, role, vendor_id, is_active)
-        VALUES ($1, $2, $3, 'VENDOR', $4, false)
-        RETURNING id
-      `;
+      // Create vendor user
+      const { error: userError } = await db
+        .from('users')
+        .insert([{
+          name: contactPerson,
+          email: contactEmail,
+          password_hash: passwordHash,
+          role: 'VENDOR',
+          vendor_id: vendorId,
+          is_active: false
+        }]);
 
-      await client.query(userInsertQuery, [
-        contactPerson,
-        contactEmail,
-        passwordHash,
-        vendorId
-      ]);
-
-      await client.query('COMMIT');
+      if (userError) throw userError;
 
       res.status(201).json({
         message: 'Vendor signup successful. Your account is pending approval from the admin.',
@@ -85,10 +89,7 @@ export const publicSignup = async (req, res, next) => {
       });
 
     } catch (error) {
-      await client.query('ROLLBACK');
       throw error;
-    } finally {
-      client.release();
     }
 
   } catch (error) {

@@ -1,67 +1,59 @@
-import pool from '../../config/db.js';
+import { getDbClient } from '../../config/db.js';
 
 export async function getAdminLineItems(req, res, next) {
   try {
     const { status, priority, page = 1, limit = 50 } = req.query;
     const offset = (page - 1) * limit;
 
-    let whereClause = '';
-    const params = [];
-    let paramCounter = 1;
+    const db = getDbClient();
 
+    // Build base query
+    let query = db
+      .from('purchase_order_line_items')
+      .select(`
+        id,
+        po_id,
+        product_code,
+        product_name,
+        quantity,
+        line_priority,
+        expected_delivery_date,
+        status,
+        purchase_orders!inner(po_number, vendor_id, vendors!inner(name))
+      `)
+      .order('expected_delivery_date', { ascending: true })
+      .order('line_priority', { ascending: false });
+
+    // Apply status filter
     if (status && status !== 'ALL') {
       if (status === 'DELAYED') {
-        whereClause += ` WHERE poli.status != 'DELIVERED' AND poli.expected_delivery_date < CURRENT_DATE`;
+        query = query.lt('expected_delivery_date', new Date().toISOString().split('T')[0]);
+        query = query.neq('status', 'DELIVERED');
       } else {
-        whereClause += ` WHERE poli.status = $${paramCounter}`;
-        params.push(status);
-        paramCounter++;
+        query = query.eq('status', status);
       }
     }
 
+    // Apply priority filter
     if (priority && priority !== 'ALL') {
-      if (whereClause) {
-        whereClause += ` AND poli.line_priority = $${paramCounter}`;
-      } else {
-        whereClause += ` WHERE poli.line_priority = $${paramCounter}`;
-      }
-      params.push(priority);
-      paramCounter++;
+      query = query.eq('line_priority', priority);
     }
 
-    const query = `
-      SELECT
-        poli.id,
-        poli.po_id,
-        po.po_number,
-        v.name as vendor_name,
-        poli.product_code,
-        poli.product_name,
-        poli.quantity,
-        poli.line_priority,
-        poli.expected_delivery_date,
-        poli.status,
-        CASE
-          WHEN poli.status != 'DELIVERED' AND poli.expected_delivery_date < CURRENT_DATE THEN true
-          ELSE false
-        END as is_delayed
-      FROM purchase_order_line_items poli
-      JOIN purchase_orders po ON po.id = poli.po_id
-      JOIN vendors v ON v.id = po.vendor_id
-      ${whereClause}
-      ORDER BY poli.expected_delivery_date ASC, poli.line_priority DESC
-      LIMIT $${paramCounter} OFFSET $${paramCounter + 1}
-    `;
+    // Get total count
+    const { count } = await db
+      .from('purchase_order_line_items')
+      .select('id', { count: 'exact', head: true });
 
-    params.push(limit, offset);
+    // Apply pagination
+    const { data: items, error } = await query.range(offset, offset + limit - 1);
 
-    const result = await pool.query(query, params);
+    if (error) throw error;
 
     res.json({
-      items: result.rows,
+      items: items || [],
       page: parseInt(page),
       limit: parseInt(limit),
-      total: result.rows.length
+      total: count || 0
     });
   } catch (error) {
     next(error);
@@ -74,57 +66,50 @@ export async function getVendorLineItems(req, res, next) {
     const { vendor_id } = req.user;
     const offset = (page - 1) * limit;
 
-    let whereClause = 'WHERE po.vendor_id = $1';
-    const params = [vendor_id];
-    let paramCounter = 2;
+    const db = getDbClient();
 
+    // Build base query
+    let query = db
+      .from('purchase_order_line_items')
+      .select(`
+        id,
+        po_id,
+        product_code,
+        product_name,
+        quantity,
+        line_priority,
+        expected_delivery_date,
+        status,
+        purchase_orders!inner(po_number, vendor_id)
+      `)
+      .eq('purchase_orders.vendor_id', vendor_id)
+      .order('expected_delivery_date', { ascending: true })
+      .order('line_priority', { ascending: false });
+
+    // Apply status filter
     if (status && status !== 'ALL') {
       if (status === 'DELAYED') {
-        whereClause += ` AND poli.status != 'DELIVERED' AND poli.expected_delivery_date < CURRENT_DATE`;
+        query = query.lt('expected_delivery_date', new Date().toISOString().split('T')[0]);
+        query = query.neq('status', 'DELIVERED');
       } else {
-        whereClause += ` AND poli.status = $${paramCounter}`;
-        params.push(status);
-        paramCounter++;
+        query = query.eq('status', status);
       }
     }
 
+    // Apply priority filter
     if (priority && priority !== 'ALL') {
-      whereClause += ` AND poli.line_priority = $${paramCounter}`;
-      params.push(priority);
-      paramCounter++;
+      query = query.eq('line_priority', priority);
     }
 
-    const query = `
-      SELECT
-        poli.id,
-        poli.po_id,
-        po.po_number,
-        poli.product_code,
-        poli.product_name,
-        poli.quantity,
-        poli.line_priority,
-        poli.expected_delivery_date,
-        poli.status,
-        CASE
-          WHEN poli.status != 'DELIVERED' AND poli.expected_delivery_date < CURRENT_DATE THEN true
-          ELSE false
-        END as is_delayed
-      FROM purchase_order_line_items poli
-      JOIN purchase_orders po ON po.id = poli.po_id
-      ${whereClause}
-      ORDER BY poli.expected_delivery_date ASC, poli.line_priority DESC
-      LIMIT $${paramCounter} OFFSET $${paramCounter + 1}
-    `;
+    const { data: items, error, count } = await query.range(offset, offset + limit - 1);
 
-    params.push(limit, offset);
-
-    const result = await pool.query(query, params);
+    if (error) throw error;
 
     res.json({
-      items: result.rows,
+      items: items || [],
       page: parseInt(page),
       limit: parseInt(limit),
-      total: result.rows.length
+      total: count || 0
     });
   } catch (error) {
     next(error);
