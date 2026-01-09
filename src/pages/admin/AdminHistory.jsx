@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { History, Filter, Search } from 'lucide-react';
 import { Layout } from '../../components/Layout';
 import { api } from '../../config/api';
+import { useSortableTable } from '../../hooks/useSortableTable';
 
 export function AdminHistory() {
   const navigate = useNavigate();
@@ -34,6 +35,8 @@ export function AdminHistory() {
     if (filters.poNumber && !entry.po_number?.toLowerCase().includes(filters.poNumber.toLowerCase())) return false;
     return true;
   });
+
+  const { sortedData, requestSort, getSortIcon } = useSortableTable(filteredHistory);
 
   return (
     <Layout role="admin">
@@ -95,20 +98,20 @@ export function AdminHistory() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date/Time
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => requestSort('changed_at')}>
+                      Date/Time {getSortIcon('changed_at')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      PO Number
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => requestSort('po_number')}>
+                      PO Number {getSortIcon('po_number')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Vendor
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => requestSort('vendor_name')}>
+                      Vendor {getSortIcon('vendor_name')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Level
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => requestSort('level')}>
+                      Level {getSortIcon('level')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Field
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => requestSort('field_name')}>
+                      Field {getSortIcon('field_name')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Old Value
@@ -122,7 +125,7 @@ export function AdminHistory() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredHistory.map((entry, idx) => (
+                  {sortedData.map((entry, idx) => (
                     <tr
                       key={idx}
                       className="hover:bg-gray-50 cursor-pointer"

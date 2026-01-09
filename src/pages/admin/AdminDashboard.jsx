@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { api } from '../../config/api';
 import { Package, Filter, Eye, AlertCircle, Clock, CheckCircle, TrendingUp } from 'lucide-react';
+import { useSortableTable } from '../../hooks/useSortableTable';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 const STATUSES = ['CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED'];
@@ -30,6 +31,7 @@ export function AdminDashboard() {
   const [loadingStats, setLoadingStats] = useState(true);
 
   const navigate = useNavigate();
+  const { sortedData, requestSort, getSortIcon } = useSortableTable(pos);
 
   useEffect(() => {
     loadPos();
@@ -186,23 +188,38 @@ export function AdminDashboard() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      PO Number
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => requestSort('po_number')}
+                    >
+                      PO Number {getSortIcon('po_number')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      PO Date
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => requestSort('po_date')}
+                    >
+                      PO Date {getSortIcon('po_date')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Vendor
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => requestSort('type')}
+                    >
+                      Type {getSortIcon('type')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Priority
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => requestSort('priority')}
+                    >
+                      Priority {getSortIcon('priority')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => requestSort('status')}
+                    >
+                      Status {getSortIcon('status')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Line Items
@@ -213,14 +230,14 @@ export function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {pos.length === 0 ? (
+                  {sortedData.length === 0 ? (
                     <tr>
                       <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
                         No purchase orders found
                       </td>
                     </tr>
                   ) : (
-                    pos.map(po => (
+                    sortedData.map(po => (
                       <tr key={po.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {po.po_number}

@@ -39,7 +39,7 @@ export async function getPoById(req, res, next) {
 export async function updatePoPriority(req, res, next) {
   try {
     const { priority } = req.body;
-    const po = await poService.updatePoPriority(req.params.id, priority);
+    const po = await poService.updatePoPriority(req.params.id, priority, req.user);
     res.json(po);
   } catch (error) {
     next(error);
@@ -72,7 +72,8 @@ export async function updateLineItemExpectedDate(req, res, next) {
     const lineItem = await poService.updateLineItemExpectedDate(
       req.params.poId,
       req.params.lineItemId,
-      expected_delivery_date
+      expected_delivery_date,
+      req.user
     );
     res.json(lineItem);
   } catch (error) {
@@ -86,7 +87,8 @@ export async function updateLineItemStatus(req, res, next) {
     const lineItem = await poService.updateLineItemStatus(
       req.params.poId,
       req.params.lineItemId,
-      status
+      status,
+      req.user
     );
     res.json(lineItem);
   } catch (error) {
@@ -135,7 +137,8 @@ export async function updateLineItemPriority(req, res, next) {
     const lineItem = await poService.updateLineItemPriority(
       req.params.poId,
       req.params.lineItemId,
-      priority
+      priority,
+      req.user
     );
     res.json(lineItem);
   } catch (error) {

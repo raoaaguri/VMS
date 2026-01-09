@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, ArrowUpDown } from 'lucide-react';
+import { Package } from 'lucide-react';
 import { Layout } from '../../components/Layout';
 import { api } from '../../config/api';
+import { useSortableTable } from '../../hooks/useSortableTable';
 
 export function AdminLineItems() {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ export function AdminLineItems() {
     status: 'ALL',
     priority: 'ALL',
   });
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const { sortedData, requestSort, getSortIcon } = useSortableTable(lineItems);
 
   useEffect(() => {
     fetchLineItems();
@@ -34,25 +35,6 @@ export function AdminLineItems() {
     }
   };
 
-  const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
-
-  const sortedItems = [...lineItems].sort((a, b) => {
-    if (!sortConfig.key) return 0;
-
-    const aValue = a[sortConfig.key];
-    const bValue = b[sortConfig.key];
-
-    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-    return 0;
-  });
-
   const getPriorityColor = (priority) => {
     const colors = {
       LOW: 'bg-gray-100 text-gray-800',
@@ -71,17 +53,6 @@ export function AdminLineItems() {
       DELIVERED: 'bg-green-100 text-green-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  const SortIcon = ({ column }) => {
-    if (sortConfig.key !== column) {
-      return <ArrowUpDown className="w-4 h-4 text-gray-400" />;
-    }
-    return (
-      <ArrowUpDown
-        className={`w-4 h-4 ${sortConfig.direction === 'asc' ? 'text-blue-600' : 'text-blue-600 rotate-180'}`}
-      />
-    );
   };
 
   return (
@@ -140,7 +111,7 @@ export function AdminLineItems() {
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <p className="mt-2 text-gray-600">Loading line items...</p>
             </div>
-          ) : sortedItems.length === 0 ? (
+          ) : sortedData.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               No line items found
             </div>
@@ -151,69 +122,51 @@ export function AdminLineItems() {
                   <tr>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('po_number')}
+                      onClick={() => requestSort('po_number')}
                     >
-                      <div className="flex items-center gap-1">
-                        PO Number
-                        <SortIcon column="po_number" />
-                      </div>
+                      PO Number {getSortIcon('po_number')}
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('vendor_name')}
+                      onClick={() => requestSort('vendor_name')}
                     >
-                      <div className="flex items-center gap-1">
-                        Vendor Name
-                        <SortIcon column="vendor_name" />
-                      </div>
+                      Vendor Name {getSortIcon('vendor_name')}
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('product_code')}
+                      onClick={() => requestSort('product_code')}
                     >
-                      <div className="flex items-center gap-1">
-                        Product Code
-                        <SortIcon column="product_code" />
-                      </div>
+                      Product Code {getSortIcon('product_code')}
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('product_name')}
+                      onClick={() => requestSort('product_name')}
                     >
-                      <div className="flex items-center gap-1">
-                        Product Name
-                        <SortIcon column="product_name" />
-                      </div>
+                      Product Name {getSortIcon('product_name')}
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('quantity')}
+                      onClick={() => requestSort('quantity')}
                     >
-                      <div className="flex items-center gap-1">
-                        Quantity
-                        <SortIcon column="quantity" />
-                      </div>
+                      Quantity {getSortIcon('quantity')}
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('line_priority')}
+                      onClick={() => requestSort('line_priority')}
                     >
-                      <div className="flex items-center gap-1">
-                        Priority
-                        <SortIcon column="line_priority" />
-                      </div>
+                      Priority {getSortIcon('line_priority')}
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('expected_delivery_date')}
+                      onClick={() => requestSort('expected_delivery_date')}
                     >
-                      <div className="flex items-center gap-1">
-                        Expected Delivery
-                        <SortIcon column="expected_delivery_date" />
-                      </div>
+                      Expected Delivery {getSortIcon('expected_delivery_date')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => requestSort('status')}
+                    >
+                      Status {getSortIcon('status')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Delayed
@@ -221,7 +174,7 @@ export function AdminLineItems() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedItems.map((item) => (
+                  {sortedData.map((item) => (
                     <tr
                       key={item.id}
                       className="hover:bg-gray-50 cursor-pointer"
@@ -273,9 +226,9 @@ export function AdminLineItems() {
             </div>
           )}
 
-          {!loading && sortedItems.length > 0 && (
+          {!loading && sortedData.length > 0 && (
             <div className="mt-4 text-sm text-gray-600">
-              Showing {sortedItems.length} line item{sortedItems.length !== 1 ? 's' : ''}
+              Showing {sortedData.length} line item{sortedData.length !== 1 ? 's' : ''}
             </div>
           )}
         </div>

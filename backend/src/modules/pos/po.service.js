@@ -40,7 +40,7 @@ export async function createPo(poData, lineItemsData) {
   return await getPoById(po.id);
 }
 
-export async function updatePoPriority(id, priority) {
+export async function updatePoPriority(id, priority, user) {
   const po = await poRepository.findById(id);
 
   if (!po) throw new NotFoundError('Purchase order not found');
@@ -49,7 +49,22 @@ export async function updatePoPriority(id, priority) {
     throw new BadRequestError('Cannot update priority of delivered PO');
   }
 
-  return await poRepository.update(id, { priority });
+  const oldPriority = po.priority;
+  const updatedPo = await poRepository.update(id, { priority });
+
+  if (oldPriority !== priority && user) {
+    await poRepository.createPoHistory({
+      po_id: id,
+      changed_by_user_id: user.id,
+      changed_by_role: user.role,
+      action_type: 'PRIORITY_CHANGE',
+      field_name: 'priority',
+      old_value: oldPriority,
+      new_value: priority
+    });
+  }
+
+  return updatedPo;
 }
 
 export async function updatePoStatus(id, status) {
@@ -85,7 +100,7 @@ export async function acceptPo(id, lineItemUpdates) {
   return await getPoById(id);
 }
 
-export async function updateLineItemExpectedDate(poId, lineItemId, expectedDeliveryDate) {
+export async function updateLineItemExpectedDate(poId, lineItemId, expectedDeliveryDate, user) {
   const lineItem = await poRepository.findLineItemById(lineItemId);
 
   if (!lineItem) throw new NotFoundError('Line item not found');
@@ -98,12 +113,28 @@ export async function updateLineItemExpectedDate(poId, lineItemId, expectedDeliv
     throw new BadRequestError('Cannot update expected date for delivered line item');
   }
 
-  return await poRepository.updateLineItem(lineItemId, {
+  const oldDate = lineItem.expected_delivery_date;
+  const updatedItem = await poRepository.updateLineItem(lineItemId, {
     expected_delivery_date: expectedDeliveryDate
   });
+
+  if (oldDate !== expectedDeliveryDate && user) {
+    await poRepository.createLineItemHistory({
+      po_id: poId,
+      line_item_id: lineItemId,
+      changed_by_user_id: user.id,
+      changed_by_role: user.role,
+      action_type: 'DATE_CHANGE',
+      field_name: 'expected_delivery_date',
+      old_value: oldDate,
+      new_value: expectedDeliveryDate
+    });
+  }
+
+  return updatedItem;
 }
 
-export async function updateLineItemStatus(poId, lineItemId, status) {
+export async function updateLineItemStatus(poId, lineItemId, status, user) {
   const lineItem = await poRepository.findLineItemById(lineItemId);
 
   if (!lineItem) throw new NotFoundError('Line item not found');
@@ -120,7 +151,21 @@ export async function updateLineItemStatus(poId, lineItemId, status) {
     throw new BadRequestError('Cannot move line item to a previous status');
   }
 
+  const oldStatus = lineItem.status;
   await poRepository.updateLineItem(lineItemId, { status });
+
+  if (oldStatus !== status && user) {
+    await poRepository.createLineItemHistory({
+      po_id: poId,
+      line_item_id: lineItemId,
+      changed_by_user_id: user.id,
+      changed_by_role: user.role,
+      action_type: 'STATUS_CHANGE',
+      field_name: 'status',
+      old_value: oldStatus,
+      new_value: status
+    });
+  }
 
   const totalCount = await poRepository.countTotalLineItems(poId);
   const deliveredCount = await poRepository.countLineItemsByStatus(poId, 'DELIVERED');
@@ -132,7 +177,7 @@ export async function updateLineItemStatus(poId, lineItemId, status) {
   return await poRepository.findLineItemById(lineItemId);
 }
 
-export async function updateLineItemPriority(poId, lineItemId, priority) {
+export async function updateLineItemPriority(poId, lineItemId, priority, user) {
   const lineItem = await poRepository.findLineItemById(lineItemId);
 
   if (!lineItem) throw new NotFoundError('Line item not found');
@@ -145,7 +190,23 @@ export async function updateLineItemPriority(poId, lineItemId, priority) {
     throw new BadRequestError('Cannot update priority for delivered line item');
   }
 
-  return await poRepository.updateLineItem(lineItemId, { line_priority: priority });
+  const oldPriority = lineItem.line_priority;
+  const updatedItem = await poRepository.updateLineItem(lineItemId, { line_priority: priority });
+
+  if (oldPriority !== priority && user) {
+    await poRepository.createLineItemHistory({
+      po_id: poId,
+      line_item_id: lineItemId,
+      changed_by_user_id: user.id,
+      changed_by_role: user.role,
+      action_type: 'PRIORITY_CHANGE',
+      field_name: 'line_priority',
+      old_value: oldPriority,
+      new_value: priority
+    });
+  }
+
+  return updatedItem;
 }
 
 export async function updatePoClosure(id, closureData, user) {
