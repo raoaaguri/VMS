@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
+import VendorSignup from './pages/VendorSignup';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminPoDetail } from './pages/admin/AdminPoDetail';
 import { VendorManagement } from './pages/admin/VendorManagement';
@@ -14,6 +15,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/vendor-signup" element={<VendorSignup />} />
 
           <Route
             path="/admin/dashboard"

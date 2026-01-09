@@ -94,6 +94,28 @@ export async function updateLineItemStatus(req, res, next) {
   }
 }
 
+export async function updatePoClosure(req, res, next) {
+  try {
+    const { closure_status, closed_amount } = req.body;
+    const po = await poService.updatePoClosure(req.params.id, {
+      closure_status,
+      closed_amount
+    }, req.user);
+    res.json(po);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getPoHistory(req, res, next) {
+  try {
+    const history = await poService.getPoHistory(req.params.id);
+    res.json(history);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function updateLineItemPriority(req, res, next) {
   try {
     const { priority } = req.body;

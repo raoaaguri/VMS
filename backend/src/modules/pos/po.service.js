@@ -147,3 +147,56 @@ export async function updateLineItemPriority(poId, lineItemId, priority) {
 
   return await poRepository.updateLineItem(lineItemId, { line_priority: priority });
 }
+
+export async function updatePoClosure(id, closureData, user) {
+  const po = await poRepository.findById(id);
+
+  if (!po) throw new NotFoundError('Purchase order not found');
+
+  if (closureData.closed_amount && closureData.closed_amount < 0) {
+    throw new BadRequestError('Closed amount cannot be negative');
+  }
+
+  const oldClosureStatus = po.closure_status;
+  const oldClosedAmount = po.closed_amount;
+
+  const updatedPo = await poRepository.update(id, {
+    closure_status: closureData.closure_status,
+    closed_amount: closureData.closed_amount,
+    closed_amount_currency: 'INR'
+  });
+
+  if (oldClosureStatus !== closureData.closure_status) {
+    await poRepository.createPoHistory({
+      po_id: id,
+      changed_by_user_id: user.id,
+      changed_by_role: user.role,
+      action_type: 'CLOSURE_CHANGE',
+      field_name: 'closure_status',
+      old_value: oldClosureStatus,
+      new_value: closureData.closure_status
+    });
+  }
+
+  if (oldClosedAmount !== closureData.closed_amount) {
+    await poRepository.createPoHistory({
+      po_id: id,
+      changed_by_user_id: user.id,
+      changed_by_role: user.role,
+      action_type: 'CLOSURE_CHANGE',
+      field_name: 'closed_amount',
+      old_value: String(oldClosedAmount || 0),
+      new_value: String(closureData.closed_amount)
+    });
+  }
+
+  return updatedPo;
+}
+
+export async function getPoHistory(poId) {
+  const po = await poRepository.findById(poId);
+
+  if (!po) throw new NotFoundError('Purchase order not found');
+
+  return await poRepository.getPoHistory(poId);
+}

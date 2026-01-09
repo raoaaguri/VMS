@@ -9,7 +9,7 @@ export async function login(email, password) {
 
   const { data: users, error } = await db
     .from('users')
-    .select('id, name, email, password_hash, role, vendor_id')
+    .select('id, name, email, password_hash, role, vendor_id, is_active')
     .eq('email', email)
     .maybeSingle();
 
@@ -20,6 +20,24 @@ export async function login(email, password) {
 
   if (!isPasswordValid) {
     throw new UnauthorizedError('Invalid email or password');
+  }
+
+  if (!users.is_active) {
+    throw new UnauthorizedError('Your account is not active. Please contact the administrator.');
+  }
+
+  if (users.role === 'VENDOR' && users.vendor_id) {
+    const { data: vendor, error: vendorError } = await db
+      .from('vendors')
+      .select('status')
+      .eq('id', users.vendor_id)
+      .maybeSingle();
+
+    if (vendorError) throw vendorError;
+
+    if (!vendor || vendor.status !== 'ACTIVE') {
+      throw new UnauthorizedError('Your vendor account is pending approval or has been rejected.');
+    }
   }
 
   const token = jwt.sign(

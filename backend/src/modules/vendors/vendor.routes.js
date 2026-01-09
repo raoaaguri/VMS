@@ -13,5 +13,7 @@ router.post('/', vendorController.createVendor);
 router.put('/:id', vendorController.updateVendor);
 router.delete('/:id', vendorController.deleteVendor);
 router.post('/:id/user', vendorController.createVendorUser);
+router.post('/:id/approve', vendorController.approveVendor);
+router.post('/:id/reject', vendorController.rejectVendor);
 
 export default router;

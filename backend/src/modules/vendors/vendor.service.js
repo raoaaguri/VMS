@@ -64,3 +64,37 @@ export async function createVendorUser(vendorId, userData) {
 
   return await userService.createUser(userDataWithVendor);
 }
+
+export async function approveVendor(vendorId) {
+  const vendor = await vendorRepository.findById(vendorId);
+
+  if (!vendor) {
+    throw new NotFoundError('Vendor not found');
+  }
+
+  if (vendor.status === 'ACTIVE') {
+    throw new ConflictError('Vendor is already approved');
+  }
+
+  const vendorCode = await vendorRepository.generateNextVendorCode();
+
+  const updatedVendor = await vendorRepository.approveVendor(vendorId, vendorCode);
+
+  await vendorRepository.activateVendorUsers(vendorId);
+
+  return updatedVendor;
+}
+
+export async function rejectVendor(vendorId) {
+  const vendor = await vendorRepository.findById(vendorId);
+
+  if (!vendor) {
+    throw new NotFoundError('Vendor not found');
+  }
+
+  const updatedVendor = await vendorRepository.rejectVendor(vendorId);
+
+  await vendorRepository.deactivateVendorUsers(vendorId);
+
+  return updatedVendor;
+}

@@ -53,3 +53,21 @@ export async function createVendorUser(req, res, next) {
     next(error);
   }
 }
+
+export async function approveVendor(req, res, next) {
+  try {
+    const vendor = await vendorService.approveVendor(req.params.id);
+    res.json(vendor);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function rejectVendor(req, res, next) {
+  try {
+    const vendor = await vendorService.rejectVendor(req.params.id);
+    res.json(vendor);
+  } catch (error) {
+    next(error);
+  }
+}

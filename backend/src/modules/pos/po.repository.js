@@ -194,3 +194,85 @@ export async function countTotalLineItems(poId) {
   if (error) throw error;
   return count;
 }
+
+export async function createPoHistory(historyData) {
+  const db = getDbClient();
+
+  const { data, error } = await db
+    .from('po_history')
+    .insert(historyData)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createLineItemHistory(historyData) {
+  const db = getDbClient();
+
+  const { data, error } = await db
+    .from('po_line_item_history')
+    .insert(historyData)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getPoHistory(poId) {
+  const db = getDbClient();
+
+  const [poHistoryResult, lineItemHistoryResult] = await Promise.all([
+    db
+      .from('po_history')
+      .select(`
+        *,
+        users:changed_by_user_id (
+          name,
+          email
+        )
+      `)
+      .eq('po_id', poId)
+      .order('changed_at', { ascending: false }),
+    db
+      .from('po_line_item_history')
+      .select(`
+        *,
+        users:changed_by_user_id (
+          name,
+          email
+        ),
+        purchase_order_line_items:line_item_id (
+          product_code,
+          product_name
+        )
+      `)
+      .eq('po_id', poId)
+      .order('changed_at', { ascending: false })
+  ]);
+
+  if (poHistoryResult.error) throw poHistoryResult.error;
+  if (lineItemHistoryResult.error) throw lineItemHistoryResult.error;
+
+  const poHistory = poHistoryResult.data.map(h => ({
+    ...h,
+    level: 'PO',
+    line_item_reference: null
+  }));
+
+  const lineItemHistory = lineItemHistoryResult.data.map(h => ({
+    ...h,
+    level: 'LINE_ITEM',
+    line_item_reference: h.purchase_order_line_items
+      ? `${h.purchase_order_line_items.product_code} - ${h.purchase_order_line_items.product_name}`
+      : 'Unknown Item'
+  }));
+
+  const allHistory = [...poHistory, ...lineItemHistory].sort(
+    (a, b) => new Date(b.changed_at) - new Date(a.changed_at)
+  );
+
+  return allHistory;
+}
