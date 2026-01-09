@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { api } from '../../config/api';
-import { Building, Plus, ArrowLeft, UserPlus, Edit, X } from 'lucide-react';
+import { Building, Plus, ArrowLeft, UserPlus, Edit, X, CheckCircle, XCircle } from 'lucide-react';
 
 export function VendorManagement() {
   const [vendors, setVendors] = useState([]);
@@ -79,6 +79,34 @@ export function VendorManagement() {
   const openEditForm = (vendor) => {
     setEditingVendor(vendor);
     setShowVendorForm(true);
+  };
+
+  const handleApproveVendor = async (vendorId) => {
+    if (!confirm('Are you sure you want to approve this vendor? They will be able to login and access the system.')) {
+      return;
+    }
+
+    try {
+      await api.admin.approveVendor(vendorId);
+      await loadVendors();
+      alert('Vendor approved successfully! A vendor code has been auto-generated.');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleRejectVendor = async (vendorId) => {
+    if (!confirm('Are you sure you want to reject this vendor? They will not be able to login.')) {
+      return;
+    }
+
+    try {
+      await api.admin.rejectVendor(vendorId);
+      await loadVendors();
+      alert('Vendor rejected successfully.');
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -374,7 +402,10 @@ export function VendorManagement() {
                       GST Number
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      Approval Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Active Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -384,7 +415,7 @@ export function VendorManagement() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {vendors.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
                         No vendors found
                       </td>
                     </tr>
@@ -395,7 +426,7 @@ export function VendorManagement() {
                           {vendor.name}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {vendor.code}
+                          {vendor.code || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {vendor.contact_person}
@@ -411,6 +442,17 @@ export function VendorManagement() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            vendor.status === 'ACTIVE'
+                              ? 'bg-green-100 text-green-800'
+                              : vendor.status === 'PENDING_APPROVAL'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {vendor.status === 'PENDING_APPROVAL' ? 'Pending' : vendor.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                             vendor.is_active
                               ? 'bg-green-100 text-green-800'
                               : 'bg-gray-100 text-gray-800'
@@ -418,21 +460,50 @@ export function VendorManagement() {
                             {vendor.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm space-x-3">
-                          <button
-                            onClick={() => openEditForm(vendor)}
-                            className="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center space-x-1"
-                          >
-                            <Edit className="w-4 h-4" />
-                            <span>Edit</span>
-                          </button>
-                          <button
-                            onClick={() => setShowUserForm(vendor.id)}
-                            className="text-green-600 hover:text-green-800 font-medium inline-flex items-center space-x-1"
-                          >
-                            <UserPlus className="w-4 h-4" />
-                            <span>Add User</span>
-                          </button>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="flex flex-wrap gap-2">
+                            {vendor.status === 'PENDING_APPROVAL' && (
+                              <>
+                                <button
+                                  onClick={() => handleApproveVendor(vendor.id)}
+                                  className="text-green-600 hover:text-green-800 font-medium inline-flex items-center space-x-1"
+                                  title="Approve Vendor"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                  <span>Approve</span>
+                                </button>
+                                <button
+                                  onClick={() => handleRejectVendor(vendor.id)}
+                                  className="text-red-600 hover:text-red-800 font-medium inline-flex items-center space-x-1"
+                                  title="Reject Vendor"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                  <span>Reject</span>
+                                </button>
+                              </>
+                            )}
+                            {vendor.status === 'ACTIVE' && (
+                              <>
+                                <button
+                                  onClick={() => openEditForm(vendor)}
+                                  className="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center space-x-1"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  onClick={() => setShowUserForm(vendor.id)}
+                                  className="text-green-600 hover:text-green-800 font-medium inline-flex items-center space-x-1"
+                                >
+                                  <UserPlus className="w-4 h-4" />
+                                  <span>Add User</span>
+                                </button>
+                              </>
+                            )}
+                            {vendor.status === 'REJECTED' && (
+                              <span className="text-gray-500 text-xs">No actions available</span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))

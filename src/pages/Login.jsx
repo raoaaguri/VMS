@@ -94,6 +94,18 @@ export function Login() {
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+
+          <div className="mt-6 text-center border-t border-gray-200 pt-6">
+            <p className="text-sm text-gray-600">
+              New vendor?{' '}
+              <button
+                onClick={() => navigate('/vendor-signup')}
+                className="text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Register here
+              </button>
+            </p>
+          </div>
         </div>
 
         <p className="text-center text-sm text-gray-600 mt-6">
