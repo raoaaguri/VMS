@@ -6,6 +6,8 @@ import { Package, Filter, Eye, CheckCircle, AlertCircle } from 'lucide-react';
 import { useSortableTable } from '../../hooks/useSortableTable';
 
 const STATUSES = ['CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED'];
+const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+const TYPES = ['GOODS', 'SERVICES'];
 
 const priorityColors = {
   LOW: 'bg-gray-100 text-gray-800',
@@ -26,6 +28,8 @@ export function VendorDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [stats, setStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
@@ -35,13 +39,15 @@ export function VendorDashboard() {
   useEffect(() => {
     loadPos();
     loadStats();
-  }, [statusFilter]);
+  }, [statusFilter, priorityFilter, typeFilter]);
 
   const loadPos = async () => {
     try {
       setLoading(true);
       const params = {};
       if (statusFilter) params.status = statusFilter;
+      if (priorityFilter) params.priority = priorityFilter;
+      if (typeFilter) params.type = typeFilter;
 
       const data = await api.vendor.getPos(params);
       setPos(data);
@@ -141,7 +147,7 @@ export function VendorDashboard() {
         )}
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 flex-wrap gap-2">
             <Filter className="w-5 h-5 text-gray-400" />
             <select
               value={statusFilter}
@@ -151,6 +157,26 @@ export function VendorDashboard() {
               <option value="">All Statuses</option>
               {STATUSES.map(status => (
                 <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Priorities</option>
+              {PRIORITIES.map(priority => (
+                <option key={priority} value={priority}>{priority}</option>
+              ))}
+            </select>
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Types</option>
+              {TYPES.map(type => (
+                <option key={type} value={type}>{type}</option>
               ))}
             </select>
           </div>
