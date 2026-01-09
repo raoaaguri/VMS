@@ -6,6 +6,8 @@ export async function getPosAdmin(req, res, next) {
 
     if (req.query.vendor_id) filters.vendor_id = req.query.vendor_id;
     if (req.query.status) filters.status = req.query.status;
+    if (req.query.priority) filters.priority = req.query.priority;
+    if (req.query.type) filters.type = req.query.type;
 
     const pos = await poService.getAllPos(filters);
     res.json(pos);
@@ -19,6 +21,8 @@ export async function getPosVendor(req, res, next) {
     const filters = { vendor_id: req.user.vendor_id };
 
     if (req.query.status) filters.status = req.query.status;
+    if (req.query.priority) filters.priority = req.query.priority;
+    if (req.query.type) filters.type = req.query.type;
 
     const pos = await poService.getAllPos(filters);
     res.json(pos);

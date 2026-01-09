@@ -7,7 +7,6 @@ import { useSortableTable } from '../../hooks/useSortableTable';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 const STATUSES = ['CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED'];
-const TYPES = ['GOODS', 'SERVICES'];
 
 const priorityColors = {
   LOW: 'bg-gray-100 text-gray-800',
@@ -32,6 +31,7 @@ export function AdminDashboard() {
   const [typeFilter, setTypeFilter] = useState('');
   const [vendorFilter, setVendorFilter] = useState('');
   const [vendors, setVendors] = useState([]);
+  const [availableTypes, setAvailableTypes] = useState([]);
   const [stats, setStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
@@ -42,6 +42,7 @@ export function AdminDashboard() {
     loadPos();
     loadStats();
     loadVendors();
+    loadTypes();
   }, [statusFilter, priorityFilter, typeFilter, vendorFilter]);
 
   const loadPos = async () => {
@@ -80,6 +81,16 @@ export function AdminDashboard() {
       setVendors(data);
     } catch (err) {
       console.error('Failed to load vendors:', err);
+    }
+  };
+
+  const loadTypes = async () => {
+    try {
+      const allPos = await api.admin.getPos();
+      const types = [...new Set(allPos.map(po => po.type).filter(Boolean))];
+      setAvailableTypes(types.sort());
+    } catch (err) {
+      console.error('Failed to load types:', err);
     }
   };
 
@@ -203,8 +214,8 @@ export function AdminDashboard() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Types</option>
-              {TYPES.map(type => (
-                <option key={type} value={type}>{type}</option>
+              {availableTypes.map(type => (
+                <option key={type} value={type}>{type.replace('_', ' ')}</option>
               ))}
             </select>
             <select

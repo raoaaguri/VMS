@@ -24,6 +24,14 @@ export async function findAll(filters = {}) {
     query = query.eq('status', filters.status);
   }
 
+  if (filters.priority) {
+    query = query.eq('priority', filters.priority);
+  }
+
+  if (filters.type) {
+    query = query.eq('type', filters.type);
+  }
+
   const { data, error } = await query;
 
   if (error) throw error;
