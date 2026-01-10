@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { getDbClient } from '../../config/db.js';
 import { BadRequestError } from '../../utils/httpErrors.js';
+import { generateNextVendorCode } from './vendor.repository.js';
 
 export const publicSignup = async (req, res, next) => {
   try {
@@ -47,6 +48,9 @@ export const publicSignup = async (req, res, next) => {
         throw new BadRequestError('Email already registered');
       }
 
+      // Generate vendor code (must be non-null per schema)
+      const vendorCode = await generateNextVendorCode();
+
       // Create vendor
       const { data: vendorData, error: vendorError } = await db
         .from('vendors')
@@ -59,7 +63,7 @@ export const publicSignup = async (req, res, next) => {
           gst_number: gstNumber || null,
           status: 'PENDING_APPROVAL',
           is_active: false,
-          code: null
+          code: vendorCode
         }])
         .select('id')
         .single();

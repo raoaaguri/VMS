@@ -25,7 +25,10 @@ export function Layout({ children, role }) {
     { path: '/vendor/history', label: 'History', icon: History },
   ];
 
-  const menuItems = role === 'admin' ? adminMenuItems : vendorMenuItems;
+  // Prefer explicit `role` prop, otherwise derive from authenticated user
+  const resolvedRole = role || (user?.role === 'ADMIN' ? 'admin' : 'vendor');
+
+  const menuItems = resolvedRole === 'admin' ? adminMenuItems : vendorMenuItems;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -48,7 +51,9 @@ export function Layout({ children, role }) {
               <div className="hidden md:flex space-x-1">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
-                  const isActive = location.pathname === item.path;
+                  // Consider the item active when the current path equals or starts with the item path
+                  const isActive =
+                    location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                   return (
                     <button
                       key={item.path}

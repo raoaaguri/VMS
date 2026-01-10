@@ -110,7 +110,7 @@ export function VendorManagement() {
   };
 
   return (
-    <Layout>
+    <Layout role="admin">
       <div className="space-y-6">
         <div>
           <button
