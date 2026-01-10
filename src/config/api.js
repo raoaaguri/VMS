@@ -85,6 +85,10 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(vendorData)
     }),
+    toggleVendorActiveStatus: (id, isActive) => apiRequest(`/admin/vendors/${id}/toggle-active`, {
+      method: 'PUT',
+      body: JSON.stringify({ is_active: isActive })
+    }),
     createVendorUser: (vendorId, userData) => apiRequest(`/admin/vendors/${vendorId}/user`, {
       method: 'POST',
       body: JSON.stringify(userData)

@@ -98,3 +98,13 @@ export async function rejectVendor(vendorId) {
 
   return updatedVendor;
 }
+
+export async function toggleVendorActiveStatus(vendorId, isActive) {
+  const vendor = await vendorRepository.findById(vendorId);
+
+  if (!vendor) {
+    throw new NotFoundError('Vendor not found');
+  }
+
+  return await vendorRepository.update(vendorId, { is_active: isActive });
+}

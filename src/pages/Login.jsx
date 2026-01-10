@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Package, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -37,8 +37,8 @@ export function Login() {
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="flex flex-col items-center mb-8">
-            <div className="bg-blue-600 p-3 rounded-xl mb-4">
-              <Package className="w-10 h-10 text-white" />
+            <div className=" p-3 rounded-xl mb-4">
+              <img src="https://ditos.technoboost.in/images/bag.svg" alt="Logo" />
             </div>
             <h2 className="text-3xl font-bold text-gray-900 text-center">
               Welcome Back

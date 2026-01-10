@@ -71,3 +71,13 @@ export async function rejectVendor(req, res, next) {
     next(error);
   }
 }
+
+export async function toggleVendorActiveStatus(req, res, next) {
+  try {
+    const { is_active } = req.body;
+    const vendor = await vendorService.toggleVendorActiveStatus(req.params.id, is_active);
+    res.json(vendor);
+  } catch (error) {
+    next(error);
+  }
+}

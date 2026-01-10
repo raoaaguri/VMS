@@ -15,5 +15,6 @@ router.delete('/:id', vendorController.deleteVendor);
 router.post('/:id/user', vendorController.createVendorUser);
 router.post('/:id/approve', vendorController.approveVendor);
 router.post('/:id/reject', vendorController.rejectVendor);
+router.put('/:id/toggle-active', vendorController.toggleVendorActiveStatus);
 
 export default router;
