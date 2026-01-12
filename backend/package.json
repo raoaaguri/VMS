@@ -6,14 +6,19 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "db:setup": "node setup-db.js",
+    "db:test": "node test-connection.js",
+    "db:seed": "node seed-pg.js",
+    "db:import": "node import-supabase-data.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
-    "express": "^4.18.2",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2"
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.3"
   }
 }
