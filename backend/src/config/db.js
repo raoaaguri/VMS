@@ -221,10 +221,11 @@ class TableQueryBuilder {
         const normalized = {};
         for (const [key, value] of Object.entries(row)) {
           if (value instanceof Date) {
-            // Convert Date object to YYYY-MM-DD format, accounting for timezone
-            const year = value.getUTCFullYear();
-            const month = String(value.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(value.getUTCDate()).padStart(2, '0');
+            // Convert Date object to YYYY-MM-DD format using local date (not UTC)
+            // The pg driver interprets DATE columns as local time, so we use local getters
+            const year = value.getFullYear();
+            const month = String(value.getMonth() + 1).padStart(2, '0');
+            const day = String(value.getDate()).padStart(2, '0');
             normalized[key] = `${year}-${month}-${day}`;
           } else {
             normalized[key] = value;
@@ -273,10 +274,11 @@ class TableQueryBuilder {
         const normalized = {};
         for (const [key, value] of Object.entries(row)) {
           if (value instanceof Date) {
-            // Convert Date object to YYYY-MM-DD format, accounting for timezone
-            const year = value.getUTCFullYear();
-            const month = String(value.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(value.getUTCDate()).padStart(2, '0');
+            // Convert Date object to YYYY-MM-DD format using local date (not UTC)
+            // The pg driver interprets DATE columns as local time, so we use local getters
+            const year = value.getFullYear();
+            const month = String(value.getMonth() + 1).padStart(2, '0');
+            const day = String(value.getDate()).padStart(2, '0');
             normalized[key] = `${year}-${month}-${day}`;
           } else {
             normalized[key] = value;
@@ -324,10 +326,11 @@ class TableQueryBuilder {
         const normalized = {};
         for (const [key, value] of Object.entries(row)) {
           if (value instanceof Date) {
-            // Convert Date object to YYYY-MM-DD format, accounting for timezone
-            const year = value.getUTCFullYear();
-            const month = String(value.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(value.getUTCDate()).padStart(2, '0');
+            // Convert Date object to YYYY-MM-DD format using local date (not UTC)
+            // The pg driver interprets DATE columns as local time, so we use local getters
+            const year = value.getFullYear();
+            const month = String(value.getMonth() + 1).padStart(2, '0');
+            const day = String(value.getDate()).padStart(2, '0');
             normalized[key] = `${year}-${month}-${day}`;
           } else {
             normalized[key] = value;
