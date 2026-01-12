@@ -10,7 +10,8 @@
     "db:setup": "node setup-db.js",
     "db:test": "node test-connection.js",
     "db:seed": "node seed-pg.js",
-    "db:import": "node import-supabase-data.js"
+    "db:import": "node import-supabase-data.js",
+    "db:migrate-from-supabase": "node migrate-from-supabase.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
