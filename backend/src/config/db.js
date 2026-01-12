@@ -214,7 +214,24 @@ class TableQueryBuilder {
       }
 
       const result = await client.query(sql, params);
-      const data = result.rows;
+      let data = result.rows;
+
+      // Normalize DATE columns to YYYY-MM-DD format
+      data = data.map(row => {
+        const normalized = {};
+        for (const [key, value] of Object.entries(row)) {
+          if (value instanceof Date) {
+            // Convert Date object to YYYY-MM-DD format, accounting for timezone
+            const year = value.getUTCFullYear();
+            const month = String(value.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(value.getUTCDate()).padStart(2, '0');
+            normalized[key] = `${year}-${month}-${day}`;
+          } else {
+            normalized[key] = value;
+          }
+        }
+        return normalized;
+      });
 
       if (this.singleResult) {
         return { data: data[0] || null, error: null };
@@ -249,7 +266,24 @@ class TableQueryBuilder {
       const sql = `INSERT INTO ${this.table} (${keys.join(', ')}) VALUES ${placeholders} RETURNING *`;
 
       const result = await client.query(sql, values);
-      const data = result.rows;
+      let data = result.rows;
+
+      // Normalize DATE columns to YYYY-MM-DD format
+      data = data.map(row => {
+        const normalized = {};
+        for (const [key, value] of Object.entries(row)) {
+          if (value instanceof Date) {
+            // Convert Date object to YYYY-MM-DD format, accounting for timezone
+            const year = value.getUTCFullYear();
+            const month = String(value.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(value.getUTCDate()).padStart(2, '0');
+            normalized[key] = `${year}-${month}-${day}`;
+          } else {
+            normalized[key] = value;
+          }
+        }
+        return normalized;
+      });
 
       if (this.singleResult) {
         return { data: data[0] || null, error: null };
@@ -283,7 +317,24 @@ class TableQueryBuilder {
 
       const sql = `UPDATE ${this.table} SET ${setClause} WHERE ${whereClause} RETURNING *`;
       const result = await client.query(sql, params);
-      const data = result.rows;
+      let data = result.rows;
+
+      // Normalize DATE columns to YYYY-MM-DD format
+      data = data.map(row => {
+        const normalized = {};
+        for (const [key, value] of Object.entries(row)) {
+          if (value instanceof Date) {
+            // Convert Date object to YYYY-MM-DD format, accounting for timezone
+            const year = value.getUTCFullYear();
+            const month = String(value.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(value.getUTCDate()).padStart(2, '0');
+            normalized[key] = `${year}-${month}-${day}`;
+          } else {
+            normalized[key] = value;
+          }
+        }
+        return normalized;
+      });
 
       if (this.singleResult) {
         return { data: data[0] || null, error: null };

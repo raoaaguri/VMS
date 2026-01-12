@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '../../../.env') });
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -25,11 +25,11 @@ export const config = {
   },
 
   postgres: {
-    host: process.env.PGHOST,
-    port: process.env.PGPORT || 5432,
-    database: process.env.PGDATABASE,
-    user: process.env.PGUSER,
-    password: process.env.PGPASSWORD,
+    host: process.env.PGHOST || 'localhost',
+    port: parseInt(process.env.PGPORT || '5432'),
+    database: process.env.PGDATABASE || 'vms',
+    user: process.env.PGUSER || 'postgres',
+    password: String(process.env.PGPASSWORD || 'postgres'),
     ssl: process.env.PGSSLMODE === 'require'
   }
 };

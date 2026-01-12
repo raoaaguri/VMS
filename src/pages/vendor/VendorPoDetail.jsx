@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
+import { Toast, useToast } from '../../components/Toast';
+import { Loader } from '../../components/Loader';
 import { api } from '../../config/api';
 import { ArrowLeft, Package, Building, CheckCircle, Calendar, History, X, Filter } from 'lucide-react';
 
@@ -23,9 +25,11 @@ const statusColors = {
 export function VendorPoDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast, showSuccess, showError } = useToast();
 
   const [po, setPo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
   const [acceptDates, setAcceptDates] = useState({});
   const [showAcceptForm, setShowAcceptForm] = useState(false);
@@ -33,7 +37,6 @@ export function VendorPoDetail() {
   const [showHistory, setShowHistory] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [lineItemFilters, setLineItemFilters] = useState({ status: 'ALL', priority: 'ALL' });
-  const [pendingDates, setPendingDates] = useState({});
   const [updatingItemId, setUpdatingItemId] = useState(null);
 
   useEffect(() => {
@@ -73,6 +76,7 @@ export function VendorPoDetail() {
 
   const handleAcceptPo = async () => {
     try {
+      setIsProcessing(true);
       const lineItems = po.line_items.map(item => ({
         line_item_id: item.id,
         expected_delivery_date: acceptDates[item.id]
@@ -81,21 +85,27 @@ export function VendorPoDetail() {
       const allDatesProvided = lineItems.every(item => item.expected_delivery_date);
 
       if (!allDatesProvided) {
-        setError('Please provide expected delivery dates for all line items');
+        showError('Please provide expected delivery dates for all line items');
+        setIsProcessing(false);
         return;
       }
 
       await api.vendor.acceptPo(id, lineItems);
+      showSuccess('PO accepted successfully!');
       await loadPo();
       setShowAcceptForm(false);
       setError('');
     } catch (err) {
+      showError(err.message);
       setError(err.message);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleUpdateExpectedDate = async (lineItemId, date) => {
     try {
+      setIsProcessing(true);
       setUpdatingItemId(lineItemId);
       await api.vendor.updateLineItemExpectedDate(id, lineItemId, date);
       setPo({
@@ -104,31 +114,35 @@ export function VendorPoDetail() {
           item.id === lineItemId ? { ...item, expected_delivery_date: date } : item
         )
       });
-      setError(''); // Clear any previous errors
+      setError('');
+      showSuccess('Expected delivery date updated successfully!');
     } catch (err) {
+      showError(err.message);
       setError(err.message);
     } finally {
       setUpdatingItemId(null);
+      setIsProcessing(false);
     }
   };
 
-  const handleDateChange = (lineItemId, date) => {
-    setPendingDates({ ...pendingDates, [lineItemId]: date });
-  };
-
-  const handleDateBlur = async (lineItemId) => {
-    const date = pendingDates[lineItemId];
-    if (date) {
-      await handleUpdateExpectedDate(lineItemId, date);
+  const handleDateChange = async (lineItemId, newDate, currentDate) => {
+    // Only make API call if the new date is different from the current date
+    if (newDate && newDate !== currentDate) {
+      await handleUpdateExpectedDate(lineItemId, newDate);
     }
   };
 
   const handleUpdateLineItemStatus = async (lineItemId, status) => {
     try {
+      setIsProcessing(true);
       await api.vendor.updateLineItemStatus(id, lineItemId, status);
+      showSuccess('Line item status updated successfully!');
       await loadPo();
     } catch (err) {
+      showError(err.message);
       setError(err.message);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -158,6 +172,8 @@ export function VendorPoDetail() {
 
   return (
     <Layout role="vendor">
+      <Loader isLoading={isProcessing} message="Processing update..." />
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => {}} />}
       <div className="space-y-6">
         <div>
           <button
@@ -336,9 +352,8 @@ export function VendorPoDetail() {
                         <div className="flex items-center gap-2">
                           <input
                             type="date"
-                            value={pendingDates[item.id] !== undefined ? pendingDates[item.id] : (item.expected_delivery_date || '')}
-                            onChange={(e) => handleDateChange(item.id, e.target.value)}
-                            onBlur={() => handleDateBlur(item.id)}
+                            value={item.expected_delivery_date || ''}
+                            onChange={(e) => handleDateChange(item.id, e.target.value, item.expected_delivery_date || '')}
                             disabled={item.status === 'DELIVERED'}
                             className="px-2 py-1 border border-gray-300 rounded text-sm"
                           />

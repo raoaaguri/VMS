@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
+import { Toast, useToast } from '../../components/Toast';
+import { Loader } from '../../components/Loader';
 import { api } from '../../config/api';
 import { ArrowLeft, Package, Building, Calendar, AlertCircle, History, X, Filter } from 'lucide-react';
 
@@ -23,9 +25,11 @@ const statusColors = {
 export function AdminPoDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast, showSuccess, showError } = useToast();
 
   const [po, setPo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
   const [editingPoPriority, setEditingPoPriority] = useState(false);
   const [editingLineItem, setEditingLineItem] = useState(null);
@@ -70,26 +74,35 @@ export function AdminPoDetail() {
 
   const updateClosure = async () => {
     try {
+      setIsProcessing(true);
       await api.admin.updatePoClosure(id, closureData);
-      alert('Closure updated successfully!');
+      showSuccess('Closure updated successfully!');
       loadPo();
     } catch (err) {
-      alert('Failed to update closure: ' + err.message);
+      showError(err.message);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleUpdatePoPriority = async (priority) => {
     try {
+      setIsProcessing(true);
       await api.admin.updatePoPriority(id, priority);
       setPo({ ...po, priority });
       setEditingPoPriority(false);
+      showSuccess('PO priority updated successfully!');
     } catch (err) {
+      showError(err.message);
       setError(err.message);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleUpdateLineItemPriority = async (lineItemId, priority) => {
     try {
+      setIsProcessing(true);
       await api.admin.updateLineItemPriority(id, lineItemId, priority);
       setPo({
         ...po,
@@ -98,8 +111,12 @@ export function AdminPoDetail() {
         )
       });
       setEditingLineItem(null);
+      showSuccess('Line item priority updated successfully!');
     } catch (err) {
+      showError(err.message);
       setError(err.message);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -129,6 +146,8 @@ export function AdminPoDetail() {
 
   return (
     <Layout role="admin">
+      <Loader isLoading={isProcessing} message="Processing update..." />
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => {}} />}
       <div className="space-y-6">
         <div>
           <button
