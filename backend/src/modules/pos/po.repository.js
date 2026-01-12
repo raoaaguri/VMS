@@ -1,66 +1,74 @@
-import { getDbClient } from '../../config/db.js';
+import { getDbClient, query, queryOne } from '../../config/db.js';
 
 export async function findAll(filters = {}) {
-  const db = getDbClient();
-  let query = db
-    .from('purchase_orders')
-    .select(`
-      *,
-      vendors (
-        id,
-        name,
-        code,
-        contact_person,
-        contact_email
-      )
-    `)
-    .order('created_at', { ascending: false });
+  let sql = `
+    SELECT 
+      po.*,
+      jsonb_build_object(
+        'id', v.id,
+        'name', v.name,
+        'code', v.code,
+        'contact_person', v.contact_person,
+        'contact_email', v.contact_email
+      ) as vendor
+    FROM purchase_orders po
+    LEFT JOIN vendors v ON po.vendor_id = v.id
+  `;
+
+  const params = [];
+  const conditions = [];
+  let paramNum = 1;
 
   if (filters.vendor_id) {
-    query = query.eq('vendor_id', filters.vendor_id);
+    conditions.push(`po.vendor_id = $${paramNum++}`);
+    params.push(filters.vendor_id);
   }
 
   if (filters.status) {
-    query = query.eq('status', filters.status);
+    conditions.push(`po.status = $${paramNum++}`);
+    params.push(filters.status);
   }
 
   if (filters.priority) {
-    query = query.eq('priority', filters.priority);
+    conditions.push(`po.priority = $${paramNum++}`);
+    params.push(filters.priority);
   }
 
   if (filters.type) {
-    query = query.eq('type', filters.type);
+    conditions.push(`po.type = $${paramNum++}`);
+    params.push(filters.type);
   }
 
-  const { data, error } = await query;
+  if (conditions.length > 0) {
+    sql += ` WHERE ${conditions.join(' AND ')}`;
+  }
 
-  if (error) throw error;
+  sql += ` ORDER BY po.created_at DESC`;
+
+  const data = await query(sql, params);
   return data;
 }
 
 export async function findById(id) {
-  const db = getDbClient();
+  const sql = `
+    SELECT 
+      po.*,
+      jsonb_build_object(
+        'id', v.id,
+        'name', v.name,
+        'code', v.code,
+        'contact_person', v.contact_person,
+        'contact_email', v.contact_email,
+        'contact_phone', v.contact_phone,
+        'address', v.address,
+        'gst_number', v.gst_number
+      ) as vendor
+    FROM purchase_orders po
+    LEFT JOIN vendors v ON po.vendor_id = v.id
+    WHERE po.id = $1
+  `;
 
-  const { data, error } = await db
-    .from('purchase_orders')
-    .select(`
-      *,
-      vendors (
-        id,
-        name,
-        code,
-        contact_person,
-        contact_email,
-        contact_phone,
-        address,
-        gst_number
-      )
-    `)
-    .eq('id', id)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
+  return await queryOne(sql, [id]);
 }
 
 export async function findByPoNumber(poNumber) {
@@ -230,47 +238,43 @@ export async function createLineItemHistory(historyData) {
 }
 
 export async function getPoHistory(poId) {
-  const db = getDbClient();
+  const poHistorySql = `
+    SELECT 
+      ph.*,
+      jsonb_build_object('name', u.name, 'email', u.email) as users
+    FROM po_history ph
+    LEFT JOIN users u ON ph.changed_by_user_id = u.id
+    WHERE ph.po_id = $1
+    ORDER BY ph.changed_at DESC
+  `;
 
-  const [poHistoryResult, lineItemHistoryResult] = await Promise.all([
-    db
-      .from('po_history')
-      .select(`
-        *,
-        users:changed_by_user_id (
-          name,
-          email
-        )
-      `)
-      .eq('po_id', poId)
-      .order('changed_at', { ascending: false }),
-    db
-      .from('po_line_item_history')
-      .select(`
-        *,
-        users:changed_by_user_id (
-          name,
-          email
-        ),
-        purchase_order_line_items:line_item_id (
-          product_code,
-          product_name
-        )
-      `)
-      .eq('po_id', poId)
-      .order('changed_at', { ascending: false })
+  const lineItemHistorySql = `
+    SELECT 
+      lih.*,
+      jsonb_build_object('name', u.name, 'email', u.email) as users,
+      jsonb_build_object(
+        'product_code', poli.product_code,
+        'product_name', poli.product_name
+      ) as purchase_order_line_items
+    FROM po_line_item_history lih
+    LEFT JOIN users u ON lih.changed_by_user_id = u.id
+    LEFT JOIN purchase_order_line_items poli ON lih.line_item_id = poli.id
+    WHERE lih.po_id = $1
+    ORDER BY lih.changed_at DESC
+  `;
+
+  const [poHistoryData, lineItemHistoryData] = await Promise.all([
+    query(poHistorySql, [poId]),
+    query(lineItemHistorySql, [poId])
   ]);
 
-  if (poHistoryResult.error) throw poHistoryResult.error;
-  if (lineItemHistoryResult.error) throw lineItemHistoryResult.error;
-
-  const poHistory = poHistoryResult.data.map(h => ({
+  const poHistory = poHistoryData.map(h => ({
     ...h,
     level: 'PO',
     line_item_reference: null
   }));
 
-  const lineItemHistory = lineItemHistoryResult.data.map(h => ({
+  const lineItemHistory = lineItemHistoryData.map(h => ({
     ...h,
     level: 'LINE_ITEM',
     line_item_reference: h.purchase_order_line_items
@@ -286,80 +290,69 @@ export async function getPoHistory(poId) {
 }
 
 export async function getAllHistory(filters = {}) {
-  const db = getDbClient();
+  const params = [];
+  let paramNum = 1;
 
-  let poHistoryQuery = db
-    .from('po_history')
-    .select(`
-      *,
-      users:changed_by_user_id (
-        name,
-        email
-      ),
-      purchase_orders:po_id (
-        po_number,
-        vendor_id,
-        vendors:vendor_id (
-          name
-        )
-      )
-    `)
-    .order('changed_at', { ascending: false });
-
-  let lineItemHistoryQuery = db
-    .from('po_line_item_history')
-    .select(`
-      *,
-      users:changed_by_user_id (
-        name,
-        email
-      ),
-      purchase_order_line_items:line_item_id (
-        product_code,
-        product_name,
-        po_id
-      ),
-      purchase_orders!inner(
-        po_number,
-        vendor_id,
-        vendors:vendor_id (
-          name
-        )
-      )
-    `)
-    .order('changed_at', { ascending: false });
-
+  const whereClause = filters.vendor_id 
+    ? ` WHERE po.vendor_id = $${paramNum++}` 
+    : '';
+  
   if (filters.vendor_id) {
-    poHistoryQuery = poHistoryQuery.eq('purchase_orders.vendor_id', filters.vendor_id);
-    lineItemHistoryQuery = lineItemHistoryQuery.eq('purchase_orders.vendor_id', filters.vendor_id);
+    params.push(filters.vendor_id);
   }
 
-  const [poHistoryResult, lineItemHistoryResult] = await Promise.all([
-    poHistoryQuery,
-    lineItemHistoryQuery
+  const poHistorySql = `
+    SELECT 
+      ph.*,
+      po.po_number,
+      po.vendor_id,
+      v.name as vendor_name,
+      jsonb_build_object('name', u.name, 'email', u.email) as users
+    FROM po_history ph
+    LEFT JOIN purchase_orders po ON ph.po_id = po.id
+    LEFT JOIN vendors v ON po.vendor_id = v.id
+    LEFT JOIN users u ON ph.changed_by_user_id = u.id
+    ${whereClause}
+    ORDER BY ph.changed_at DESC
+  `;
+
+  const lineItemHistorySql = `
+    SELECT 
+      lih.*,
+      po.po_number,
+      po.vendor_id,
+      v.name as vendor_name,
+      poli.po_id,
+      poli.product_code,
+      poli.product_name,
+      jsonb_build_object('name', u.name, 'email', u.email) as users
+    FROM po_line_item_history lih
+    LEFT JOIN purchase_order_line_items poli ON lih.line_item_id = poli.id
+    LEFT JOIN purchase_orders po ON lih.po_id = po.id
+    LEFT JOIN vendors v ON po.vendor_id = v.id
+    LEFT JOIN users u ON lih.changed_by_user_id = u.id
+    ${whereClause}
+    ORDER BY lih.changed_at DESC
+  `;
+
+  const [poHistoryData, lineItemHistoryData] = await Promise.all([
+    query(poHistorySql, params),
+    query(lineItemHistorySql, params)
   ]);
 
-  if (poHistoryResult.error) throw poHistoryResult.error;
-  if (lineItemHistoryResult.error) throw lineItemHistoryResult.error;
-
-  const poHistory = poHistoryResult.data.map(h => ({
+  const poHistory = poHistoryData.map(h => ({
     ...h,
     level: 'PO',
-    po_number: h.purchase_orders?.po_number || 'Unknown',
-    vendor_name: h.purchase_orders?.vendors?.name || 'Unknown',
     changed_by_name: h.users?.name || 'Unknown',
     line_item_reference: null
   }));
 
-  const lineItemHistory = lineItemHistoryResult.data.map(h => ({
+  const lineItemHistory = lineItemHistoryData.map(h => ({
     ...h,
     level: 'LINE_ITEM',
-    po_number: h.purchase_orders?.po_number || 'Unknown',
-    vendor_name: h.purchase_orders?.vendors?.name || 'Unknown',
-    po_id: h.purchase_order_line_items?.po_id,
     changed_by_name: h.users?.name || 'Unknown',
-    line_item_reference: h.purchase_order_line_items
-      ? `${h.purchase_order_line_items.product_code} - ${h.purchase_order_line_items.product_name}`
+    line_item_reference: h.product_code && h.product_name
+      ? `${h.product_code} - ${h.product_name}`
       : 'Unknown Item'
   }));
 

@@ -164,6 +164,25 @@ export async function updateLineItemExpectedDate(poId, lineItemId, expectedDeliv
     throw new BadRequestError('Line item does not belong to this PO');
   }
 
+  // Check vendor ownership if this is a vendor request
+  if (user && user.role === 'VENDOR') {
+    if (!user.vendor_id) {
+      throw new ForbiddenError('Your user account is not associated with a vendor');
+    }
+    
+    const po = await poRepository.findById(poId);
+    if (!po) throw new NotFoundError('Purchase order not found');
+    
+    if (!po.vendor_id) {
+      throw new BadRequestError('This purchase order is not associated with a vendor');
+    }
+    
+    // Compare UUIDs as strings (normalize whitespace)
+    if (String(po.vendor_id).trim() !== String(user.vendor_id).trim()) {
+      throw new ForbiddenError('You do not have permission to update this line item');
+    }
+  }
+
   if (lineItem.status === 'DELIVERED') {
     throw new BadRequestError('Cannot update expected date for delivered line item');
   }
@@ -196,6 +215,25 @@ export async function updateLineItemStatus(poId, lineItemId, status, user) {
 
   if (lineItem.po_id !== poId) {
     throw new BadRequestError('Line item does not belong to this PO');
+  }
+
+  // Check vendor ownership if this is a vendor request
+  if (user && user.role === 'VENDOR') {
+    if (!user.vendor_id) {
+      throw new ForbiddenError('Your user account is not associated with a vendor');
+    }
+    
+    const po = await poRepository.findById(poId);
+    if (!po) throw new NotFoundError('Purchase order not found');
+    
+    if (!po.vendor_id) {
+      throw new BadRequestError('This purchase order is not associated with a vendor');
+    }
+    
+    // Compare UUIDs as strings (normalize whitespace)
+    if (String(po.vendor_id).trim() !== String(user.vendor_id).trim()) {
+      throw new ForbiddenError('You do not have permission to update this line item');
+    }
   }
 
   const statusProgression = ['CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED'];

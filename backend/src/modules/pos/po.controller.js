@@ -1,4 +1,5 @@
 import * as poService from './po.service.js';
+import { BadRequestError, ForbiddenError } from '../../utils/httpErrors.js';
 
 export async function getPosAdmin(req, res, next) {
   try {
@@ -34,6 +35,17 @@ export async function getPosVendor(req, res, next) {
 export async function getPoById(req, res, next) {
   try {
     const po = await poService.getPoById(req.params.id);
+    
+    // Check vendor authorization if this is a vendor request
+    if (req.user && req.user.role === 'VENDOR') {
+      if (!po.vendor_id) {
+        return next(new BadRequestError('This purchase order is not associated with a vendor'));
+      }
+      if (String(po.vendor_id).trim() !== String(req.user.vendor_id).trim()) {
+        return next(new ForbiddenError('You do not have permission to view this purchase order'));
+      }
+    }
+    
     res.json(po);
   } catch (error) {
     next(error);

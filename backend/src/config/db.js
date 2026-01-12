@@ -43,15 +43,68 @@ class TableQueryBuilder {
     this.insertData = null;
     this.updateData = null;
     this.singleResult = false;
-  }
-
-  select(cols = '*') {
-    this.selectCols = cols;
-    return this;
+    this.limitVal = null;
+    this.offsetVal = null;
+    this.countRequested = false;
   }
 
   eq(col, value) {
-    this.whereConditions.push({ col, value });
+    this.whereConditions.push({ col, value, operator: '=' });
+    return this;
+  }
+
+  neq(col, value) {
+    this.whereConditions.push({ col, value, operator: '!=' });
+    return this;
+  }
+
+  lt(col, value) {
+    this.whereConditions.push({ col, value, operator: '<' });
+    return this;
+  }
+
+  lte(col, value) {
+    this.whereConditions.push({ col, value, operator: '<=' });
+    return this;
+  }
+
+  gt(col, value) {
+    this.whereConditions.push({ col, value, operator: '>' });
+    return this;
+  }
+
+  gte(col, value) {
+    this.whereConditions.push({ col, value, operator: '>=' });
+    return this;
+  }
+
+  in(col, values) {
+    this.whereConditions.push({ col, value: values, operator: 'in' });
+    return this;
+  }
+
+  limit(n) {
+    this.limitVal = n;
+    return this;
+  }
+
+  offset(n) {
+    this.offsetVal = n;
+    return this;
+  }
+
+  range(from, to) {
+    this.offsetVal = from;
+    this.limitVal = to - from + 1;
+    this.countRequested = true;
+    return this;
+  }
+
+  select(cols = '*', options = {}) {
+    this.selectCols = cols;
+    if (options.count === 'exact') {
+      this.countRequested = true;
+    }
     return this;
   }
 
@@ -98,6 +151,34 @@ class TableQueryBuilder {
 
   async _select(client) {
     try {
+      let countSql = null;
+      let count = null;
+
+      if (this.countRequested) {
+        countSql = `SELECT COUNT(*) as count FROM ${this.table}`;
+        const params = [];
+        let paramNum = 1;
+
+        if (this.whereConditions.length > 0) {
+          const where = this.whereConditions
+            .map(cond => {
+              if (cond.operator === 'in') {
+                const placeholders = cond.value.map(() => `$${paramNum++}`).join(', ');
+                params.push(...cond.value);
+                return `${cond.col} IN (${placeholders})`;
+              } else {
+                params.push(cond.value);
+                return `${cond.col} ${cond.operator} $${paramNum++}`;
+              }
+            })
+            .join(' AND ');
+          countSql += ` WHERE ${where}`;
+        }
+
+        const countResult = await client.query(countSql, params);
+        count = parseInt(countResult.rows[0].count);
+      }
+
       let sql = `SELECT ${this.selectCols} FROM ${this.table}`;
       const params = [];
       let paramNum = 1;
@@ -105,8 +186,14 @@ class TableQueryBuilder {
       if (this.whereConditions.length > 0) {
         const where = this.whereConditions
           .map(cond => {
-            params.push(cond.value);
-            return `${cond.col} = $${paramNum++}`;
+            if (cond.operator === 'in') {
+              const placeholders = cond.value.map(() => `$${paramNum++}`).join(', ');
+              params.push(...cond.value);
+              return `${cond.col} IN (${placeholders})`;
+            } else {
+              params.push(cond.value);
+              return `${cond.col} ${cond.operator} $${paramNum++}`;
+            }
           })
           .join(' AND ');
         sql += ` WHERE ${where}`;
@@ -116,13 +203,28 @@ class TableQueryBuilder {
         sql += ` ORDER BY ${this.orderByCol} ${this.orderAsc ? 'ASC' : 'DESC'}`;
       }
 
+      if (this.limitVal !== null) {
+        sql += ` LIMIT $${paramNum++}`;
+        params.push(this.limitVal);
+      }
+
+      if (this.offsetVal !== null) {
+        sql += ` OFFSET $${paramNum++}`;
+        params.push(this.offsetVal);
+      }
+
       const result = await client.query(sql, params);
       const data = result.rows;
 
       if (this.singleResult) {
         return { data: data[0] || null, error: null };
       }
-      return { data, error: null };
+
+      const response = { data, error: null };
+      if (this.countRequested) {
+        response.count = count;
+      }
+      return response;
     } catch (error) {
       return { data: null, error };
     }

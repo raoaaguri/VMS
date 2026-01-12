@@ -33,6 +33,8 @@ export function VendorPoDetail() {
   const [showHistory, setShowHistory] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [lineItemFilters, setLineItemFilters] = useState({ status: 'ALL', priority: 'ALL' });
+  const [pendingDates, setPendingDates] = useState({});
+  const [updatingItemId, setUpdatingItemId] = useState(null);
 
   useEffect(() => {
     loadPo();
@@ -94,6 +96,7 @@ export function VendorPoDetail() {
 
   const handleUpdateExpectedDate = async (lineItemId, date) => {
     try {
+      setUpdatingItemId(lineItemId);
       await api.vendor.updateLineItemExpectedDate(id, lineItemId, date);
       setPo({
         ...po,
@@ -101,8 +104,22 @@ export function VendorPoDetail() {
           item.id === lineItemId ? { ...item, expected_delivery_date: date } : item
         )
       });
+      setError(''); // Clear any previous errors
     } catch (err) {
       setError(err.message);
+    } finally {
+      setUpdatingItemId(null);
+    }
+  };
+
+  const handleDateChange = (lineItemId, date) => {
+    setPendingDates({ ...pendingDates, [lineItemId]: date });
+  };
+
+  const handleDateBlur = async (lineItemId) => {
+    const date = pendingDates[lineItemId];
+    if (date) {
+      await handleUpdateExpectedDate(lineItemId, date);
     }
   };
 
@@ -316,19 +333,19 @@ export function VendorPoDetail() {
                     <td className="px-4 py-3 text-sm text-gray-500">${item.mrp}</td>
                     <td className="px-4 py-3 text-sm">
                       {showAcceptForm || (item.status !== 'DELIVERED' && item.status !== 'CREATED') ? (
-                        <input
-                          type="date"
-                          value={acceptDates[item.id] || ''}
-                          onChange={(e) => {
-                            if (showAcceptForm) {
-                              setAcceptDates({ ...acceptDates, [item.id]: e.target.value });
-                            } else {
-                              handleUpdateExpectedDate(item.id, e.target.value);
-                            }
-                          }}
-                          disabled={item.status === 'DELIVERED'}
-                          className="px-2 py-1 border border-gray-300 rounded text-sm"
-                        />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="date"
+                            value={pendingDates[item.id] !== undefined ? pendingDates[item.id] : (item.expected_delivery_date || '')}
+                            onChange={(e) => handleDateChange(item.id, e.target.value)}
+                            onBlur={() => handleDateBlur(item.id)}
+                            disabled={item.status === 'DELIVERED'}
+                            className="px-2 py-1 border border-gray-300 rounded text-sm"
+                          />
+                          {updatingItemId === item.id && (
+                            <span className="text-blue-500 text-xs whitespace-nowrap">Updating...</span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-gray-500">
                           {item.expected_delivery_date
