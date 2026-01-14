@@ -39,8 +39,15 @@ export function VendorDashboard() {
   useEffect(() => {
     loadPos();
     loadStats();
-    loadTypes();
   }, [statusFilter, priorityFilter, typeFilter]);
+
+  useEffect(() => {
+    // Extract types from the loaded PO data
+    if (pos.length > 0) {
+      const types = [...new Set(pos.map(po => po.type).filter(Boolean))];
+      setAvailableTypes(types.sort());
+    }
+  }, [pos]);
 
   const loadPos = async () => {
     try {
@@ -68,16 +75,6 @@ export function VendorDashboard() {
       console.error('Failed to load stats:', err);
     } finally {
       setLoadingStats(false);
-    }
-  };
-
-  const loadTypes = async () => {
-    try {
-      const allPos = await api.vendor.getPos();
-      const types = [...new Set(allPos.map(po => po.type).filter(Boolean))];
-      setAvailableTypes(types.sort());
-    } catch (err) {
-      console.error('Failed to load types:', err);
     }
   };
 

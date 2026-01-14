@@ -42,8 +42,15 @@ export function AdminDashboard() {
     loadPos();
     loadStats();
     loadVendors();
-    loadTypes();
   }, [statusFilter, priorityFilter, typeFilter, vendorFilter]);
+
+  useEffect(() => {
+    // Extract types from the loaded PO data
+    if (pos.length > 0) {
+      const types = [...new Set(pos.map(po => po.type).filter(Boolean))];
+      setAvailableTypes(types.sort());
+    }
+  }, [pos]);
 
   const loadPos = async () => {
     try {
@@ -81,16 +88,6 @@ export function AdminDashboard() {
       setVendors(data);
     } catch (err) {
       console.error('Failed to load vendors:', err);
-    }
-  };
-
-  const loadTypes = async () => {
-    try {
-      const allPos = await api.admin.getPos();
-      const types = [...new Set(allPos.map(po => po.type).filter(Boolean))];
-      setAvailableTypes(types.sort());
-    } catch (err) {
-      console.error('Failed to load types:', err);
     }
   };
 

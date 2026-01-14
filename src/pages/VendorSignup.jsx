@@ -45,7 +45,7 @@ export default function VendorSignup() {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/public/vendor-signup`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/public/vendor-signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,6 +1,6 @@
-import pkg from 'pg';
-import { config } from './env.js';
-import { logger } from '../utils/logger.js';
+import pkg from "pg";
+import { config } from "./env.js";
+import { logger } from "../utils/logger.js";
 
 const { Pool } = pkg;
 
@@ -14,14 +14,14 @@ function getPool() {
       host: config.postgres.host,
       port: config.postgres.port,
       database: config.postgres.database,
-      ssl: config.postgres.ssl ? { rejectUnauthorized: false } : false
+      ssl: config.postgres.ssl ? { rejectUnauthorized: false } : false,
     });
 
-    pool.on('error', (err) => {
-      logger.error('Unexpected error on idle client', err);
+    pool.on("error", (err) => {
+      logger.error("Unexpected error on idle client", err);
     });
 
-    logger.info('Database pool initialized');
+    logger.info("Database pool initialized");
   }
   return pool;
 }
@@ -36,7 +36,7 @@ class TableQueryBuilder {
   constructor(table, pool) {
     this.table = table;
     this.pool = pool;
-    this.selectCols = '*';
+    this.selectCols = "*";
     this.whereConditions = [];
     this.orderByCol = null;
     this.orderAsc = true;
@@ -49,37 +49,51 @@ class TableQueryBuilder {
   }
 
   eq(col, value) {
-    this.whereConditions.push({ col, value, operator: '=' });
+    this.whereConditions.push({ col, value, operator: "=" });
     return this;
   }
 
   neq(col, value) {
-    this.whereConditions.push({ col, value, operator: '!=' });
+    this.whereConditions.push({ col, value, operator: "!=" });
     return this;
   }
 
   lt(col, value) {
-    this.whereConditions.push({ col, value, operator: '<' });
+    this.whereConditions.push({ col, value, operator: "<" });
     return this;
   }
 
   lte(col, value) {
-    this.whereConditions.push({ col, value, operator: '<=' });
+    this.whereConditions.push({ col, value, operator: "<=" });
     return this;
   }
 
   gt(col, value) {
-    this.whereConditions.push({ col, value, operator: '>' });
+    this.whereConditions.push({ col, value, operator: ">" });
     return this;
   }
 
   gte(col, value) {
-    this.whereConditions.push({ col, value, operator: '>=' });
+    this.whereConditions.push({ col, value, operator: ">=" });
     return this;
   }
 
   in(col, values) {
-    this.whereConditions.push({ col, value: values, operator: 'in' });
+    this.whereConditions.push({ col, value: values, operator: "in" });
+    return this;
+  }
+
+  like(col, pattern) {
+    this.whereConditions.push({ col, value: pattern, operator: "LIKE" });
+    return this;
+  }
+
+  not(col, operator, value) {
+    if (operator === "is" && value === null) {
+      this.whereConditions.push({ col, value: null, operator: "IS NOT" });
+    } else {
+      this.whereConditions.push({ col, value, operator: "!=" });
+    }
     return this;
   }
 
@@ -100,9 +114,9 @@ class TableQueryBuilder {
     return this;
   }
 
-  select(cols = '*', options = {}) {
+  select(cols = "*", options = {}) {
     this.selectCols = cols;
-    if (options.count === 'exact') {
+    if (options.count === "exact") {
       this.countRequested = true;
     }
     return this;
@@ -161,17 +175,21 @@ class TableQueryBuilder {
 
         if (this.whereConditions.length > 0) {
           const where = this.whereConditions
-            .map(cond => {
-              if (cond.operator === 'in') {
-                const placeholders = cond.value.map(() => `$${paramNum++}`).join(', ');
+            .map((cond) => {
+              if (cond.operator === "in") {
+                const placeholders = cond.value
+                  .map(() => `$${paramNum++}`)
+                  .join(", ");
                 params.push(...cond.value);
                 return `${cond.col} IN (${placeholders})`;
+              } else if (cond.operator === "IS NOT") {
+                return `${cond.col} IS NOT NULL`;
               } else {
                 params.push(cond.value);
                 return `${cond.col} ${cond.operator} $${paramNum++}`;
               }
             })
-            .join(' AND ');
+            .join(" AND ");
           countSql += ` WHERE ${where}`;
         }
 
@@ -185,22 +203,26 @@ class TableQueryBuilder {
 
       if (this.whereConditions.length > 0) {
         const where = this.whereConditions
-          .map(cond => {
-            if (cond.operator === 'in') {
-              const placeholders = cond.value.map(() => `$${paramNum++}`).join(', ');
+          .map((cond) => {
+            if (cond.operator === "in") {
+              const placeholders = cond.value
+                .map(() => `$${paramNum++}`)
+                .join(", ");
               params.push(...cond.value);
               return `${cond.col} IN (${placeholders})`;
+            } else if (cond.operator === "IS NOT") {
+              return `${cond.col} IS NOT NULL`;
             } else {
               params.push(cond.value);
               return `${cond.col} ${cond.operator} $${paramNum++}`;
             }
           })
-          .join(' AND ');
+          .join(" AND ");
         sql += ` WHERE ${where}`;
       }
 
       if (this.orderByCol) {
-        sql += ` ORDER BY ${this.orderByCol} ${this.orderAsc ? 'ASC' : 'DESC'}`;
+        sql += ` ORDER BY ${this.orderByCol} ${this.orderAsc ? "ASC" : "DESC"}`;
       }
 
       if (this.limitVal !== null) {
@@ -217,15 +239,15 @@ class TableQueryBuilder {
       let data = result.rows;
 
       // Normalize DATE columns to YYYY-MM-DD format
-      data = data.map(row => {
+      data = data.map((row) => {
         const normalized = {};
         for (const [key, value] of Object.entries(row)) {
           if (value instanceof Date) {
             // Convert Date object to YYYY-MM-DD format using local date (not UTC)
             // The pg driver interprets DATE columns as local time, so we use local getters
             const year = value.getFullYear();
-            const month = String(value.getMonth() + 1).padStart(2, '0');
-            const day = String(value.getDate()).padStart(2, '0');
+            const month = String(value.getMonth() + 1).padStart(2, "0");
+            const day = String(value.getDate()).padStart(2, "0");
             normalized[key] = `${year}-${month}-${day}`;
           } else {
             normalized[key] = value;
@@ -258,27 +280,29 @@ class TableQueryBuilder {
         .map((_, rowIdx) => {
           const rowPlaceholders = keys
             .map((_, colIdx) => `$${rowIdx * keys.length + colIdx + 1}`)
-            .join(', ');
+            .join(", ");
           return `(${rowPlaceholders})`;
         })
-        .join(', ');
+        .join(", ");
 
-      const values = rows.flatMap(row => keys.map(key => row[key]));
-      const sql = `INSERT INTO ${this.table} (${keys.join(', ')}) VALUES ${placeholders} RETURNING *`;
+      const values = rows.flatMap((row) => keys.map((key) => row[key]));
+      const sql = `INSERT INTO ${this.table} (${keys.join(
+        ", "
+      )}) VALUES ${placeholders} RETURNING *`;
 
       const result = await client.query(sql, values);
       let data = result.rows;
 
       // Normalize DATE columns to YYYY-MM-DD format
-      data = data.map(row => {
+      data = data.map((row) => {
         const normalized = {};
         for (const [key, value] of Object.entries(row)) {
           if (value instanceof Date) {
             // Convert Date object to YYYY-MM-DD format using local date (not UTC)
             // The pg driver interprets DATE columns as local time, so we use local getters
             const year = value.getFullYear();
-            const month = String(value.getMonth() + 1).padStart(2, '0');
-            const day = String(value.getDate()).padStart(2, '0');
+            const month = String(value.getMonth() + 1).padStart(2, "0");
+            const day = String(value.getDate()).padStart(2, "0");
             normalized[key] = `${year}-${month}-${day}`;
           } else {
             normalized[key] = value;
@@ -299,38 +323,38 @@ class TableQueryBuilder {
   async _update(client) {
     try {
       if (this.whereConditions.length === 0) {
-        return { data: null, error: new Error('UPDATE requires WHERE clause') };
+        return { data: null, error: new Error("UPDATE requires WHERE clause") };
       }
 
       const keys = Object.keys(this.updateData);
       const setClause = keys
         .map((key, idx) => `${key} = $${idx + 1}`)
-        .join(', ');
+        .join(", ");
 
       const params = [...Object.values(this.updateData)];
       let paramNum = keys.length + 1;
 
       const whereClause = this.whereConditions
-        .map(cond => {
+        .map((cond) => {
           params.push(cond.value);
           return `${cond.col} = $${paramNum++}`;
         })
-        .join(' AND ');
+        .join(" AND ");
 
       const sql = `UPDATE ${this.table} SET ${setClause} WHERE ${whereClause} RETURNING *`;
       const result = await client.query(sql, params);
       let data = result.rows;
 
       // Normalize DATE columns to YYYY-MM-DD format
-      data = data.map(row => {
+      data = data.map((row) => {
         const normalized = {};
         for (const [key, value] of Object.entries(row)) {
           if (value instanceof Date) {
             // Convert Date object to YYYY-MM-DD format using local date (not UTC)
             // The pg driver interprets DATE columns as local time, so we use local getters
             const year = value.getFullYear();
-            const month = String(value.getMonth() + 1).padStart(2, '0');
-            const day = String(value.getDate()).padStart(2, '0');
+            const month = String(value.getMonth() + 1).padStart(2, "0");
+            const day = String(value.getDate()).padStart(2, "0");
             normalized[key] = `${year}-${month}-${day}`;
           } else {
             normalized[key] = value;
@@ -384,12 +408,12 @@ export async function queryOne(text, params = []) {
 export async function transaction(callback) {
   const client = await getPool().connect();
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
     const result = await callback(client);
-    await client.query('COMMIT');
+    await client.query("COMMIT");
     return result;
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     throw error;
   } finally {
     client.release();
