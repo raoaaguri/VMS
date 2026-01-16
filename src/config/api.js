@@ -1,4 +1,31 @@
-export const API_BASE_URL = "http://localhost:3001";
+/**
+ * API Configuration
+ * Dynamically determines the API base URL based on environment
+ */
+
+// Get the API base URL from environment variables or determine dynamically
+const getApiBaseUrl = () => {
+  // Check for explicit environment variable first
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+
+  // Development environment
+  if (import.meta.env.DEV) {
+    return import.meta.env.VITE_API_URL || "http://localhost:3001";
+  }
+
+  // Production environment - use same origin (relative URL)
+  // This works when frontend and backend are served from same domain
+  if (import.meta.env.VITE_USE_RELATIVE_API_URL === "true") {
+    return "";
+  }
+
+  // Production environment - use explicit API URL
+  return import.meta.env.VITE_API_URL || `${window.location.origin}`;
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem("token");
