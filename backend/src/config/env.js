@@ -6,6 +6,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Determine environment
 const nodeEnv = process.env.NODE_ENV || "development";
+const isProduction = nodeEnv === "production";
+
+/**
+ * Validates that required environment variables are present
+ * Warns in development, throws error in production
+ */
+function validateEnv(varName, defaultValue) {
+  if (isProduction) {
+    throw new Error(
+      `Missing required environment variable: ${varName}\n` +
+        `Please set ${varName} in your production environment.`
+    );
+  }
+  return defaultValue;
+}
 
 // Load environment-specific .env file
 let envFile;
@@ -29,7 +44,7 @@ export const config = {
   nodeEnv,
   port: process.env.PORT || 3001,
   isDevelopment: nodeEnv === "development",
-  isProduction: nodeEnv === "production",
+  isProduction: isProduction,
   isStaging: nodeEnv === "staging",
 
   supabase: {
@@ -65,20 +80,6 @@ export const config = {
     ssl: process.env.PGSSLMODE === "require",
   },
 };
-
-/**
- * Validates that required environment variables are present
- * Warns in development, throws error in production
- */
-function validateEnv(varName, defaultValue) {
-  if (config.isProduction) {
-    throw new Error(
-      `Missing required environment variable: ${varName}\n` +
-        `Please set ${varName} in your production environment.`
-    );
-  }
-  return defaultValue;
-}
 
 // Log current configuration (sanitized for security)
 if (config.isDevelopment) {
