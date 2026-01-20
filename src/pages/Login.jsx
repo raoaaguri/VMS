@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { AlertCircle } from 'lucide-react';
+import { logger } from '../utils/logger';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -17,16 +18,58 @@ export function Login() {
     setError('');
     setLoading(true);
 
+    const sessionId = Math.random().toString(36).substring(7);
+
+    logger.info(`[${sessionId}] 📝 Login Form Submitted`, {
+      email,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent
+    });
+
     try {
+      logger.debug(`[${sessionId}] Validating form inputs`, {
+        emailProvided: !!email,
+        passwordProvided: !!password,
+        emailFormat: email ? (email.includes('@') ? 'valid' : 'invalid') : 'empty'
+      });
+
       const user = await login(email, password);
 
+      logger.info(`[${sessionId}] ✅ Login Successful - Redirecting User`, {
+        role: user.role,
+        userId: user.id,
+        email: user.email
+      });
+
       if (user.role === 'ADMIN') {
+        logger.debug(`[${sessionId}] Redirecting to Admin Dashboard`);
         navigate('/admin/dashboard');
       } else if (user.role === 'VENDOR') {
+        logger.debug(`[${sessionId}] Redirecting to Vendor Dashboard`);
         navigate('/vendor/dashboard');
+      } else {
+        logger.warn(`[${sessionId}] ⚠️  Unknown User Role - Cannot Redirect`, {
+          role: user.role,
+          availableRoles: ['ADMIN', 'VENDOR']
+        });
+        setError('Unknown user role. Please contact support.');
       }
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      const errorMessage = err.message || 'Login failed. Please check your credentials.';
+
+      logger.error(
+        `[${sessionId}] ❌ Login Failed - Error Occurred`,
+        err,
+        {
+          email,
+          errorMessage,
+          errorType: err.name,
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString()
+        }
+      );
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

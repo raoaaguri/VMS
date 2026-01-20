@@ -3,6 +3,8 @@
  * Dynamically determines the API base URL based on environment
  */
 
+import { logger } from '../utils/logger';
+
 // Get the API base URL from environment variables or determine dynamically
 const getApiBaseUrl = () => {
   // Check for explicit environment variable first
@@ -27,8 +29,12 @@ const getApiBaseUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
+logger.info('API Configuration Loaded', { API_BASE_URL, isDev: import.meta.env.DEV });
+
 export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem("token");
+  const startTime = performance.now();
+  const requestId = Math.random().toString(36).substring(7);
 
   const headers = {
     "Content-Type": "application/json",
@@ -44,18 +50,94 @@ export async function apiRequest(endpoint, options = {}) {
     headers,
   };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  const fullUrl = `${API_BASE_URL}${endpoint}`;
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || "Request failed");
+  try {
+    logger.debug(`[${requestId}] API Request Started`, {
+      method: options.method || 'GET',
+      endpoint,
+      fullUrl,
+      hasToken: !!token
+    });
+
+    const response = await fetch(fullUrl, config);
+    const duration = (performance.now() - startTime).toFixed(2);
+
+    logger.debug(`[${requestId}] API Response Received`, {
+      status: response.status,
+      duration: `${duration}ms`
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Request failed';
+      let errorData = null;
+
+      try {
+        errorData = await response.json();
+        errorMessage = errorData.error?.message || errorData.message || errorMessage;
+      } catch (e) {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+
+      logger.error(
+        `[${requestId}] API Request Failed`,
+        new Error(errorMessage),
+        {
+          status: response.status,
+          statusText: response.statusText,
+          endpoint,
+          fullUrl,
+          errorData,
+          duration: `${duration}ms`
+        }
+      );
+
+      throw new Error(errorMessage);
+    }
+
+    if (response.status === 204) {
+      logger.debug(`[${requestId}] API Request Completed (No Content)`, { duration: `${duration}ms` });
+      return null;
+    }
+
+    const data = await response.json();
+    logger.debug(`[${requestId}] API Request Completed Successfully`, {
+      duration: `${duration}ms`,
+      hasData: !!data
+    });
+
+    return data;
+  } catch (error) {
+    const duration = (performance.now() - startTime).toFixed(2);
+
+    // Distinguish between network errors and other errors
+    if (error instanceof TypeError) {
+      logger.error(
+        `[${requestId}] Network Error - Backend Not Reachable`,
+        error,
+        {
+          endpoint,
+          fullUrl,
+          errorType: 'NetworkError',
+          duration: `${duration}ms`,
+          possibleCause: 'Backend server is not responding or not accessible from this URL'
+        }
+      );
+      throw new Error(`Unable to connect to server: ${API_BASE_URL}. Please check if the backend is running.`);
+    }
+
+    logger.error(
+      `[${requestId}] API Request Error`,
+      error,
+      {
+        endpoint,
+        fullUrl,
+        duration: `${duration}ms`
+      }
+    );
+
+    throw error;
   }
-
-  if (response.status === 204) {
-    return null;
-  }
-
-  return response.json();
 }
 
 export const api = {
