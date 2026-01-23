@@ -53,7 +53,7 @@ export function VendorHistory() {
 
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex gap-4 mb-6">
-            <div className="flex-1">
+            <div className="">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Search className="inline w-4 h-4 mr-1" />
                 PO Number
@@ -67,7 +67,7 @@ export function VendorHistory() {
               />
             </div>
 
-            <div className="flex-1">
+            <div className="">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Filter className="inline w-4 h-4 mr-1" />
                 Level
@@ -136,11 +136,10 @@ export function VendorHistory() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            entry.level === 'PO'
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${entry.level === 'PO'
                               ? 'bg-blue-100 text-blue-800'
                               : 'bg-purple-100 text-purple-800'
-                          }`}
+                            }`}
                         >
                           {entry.level}
                         </span>

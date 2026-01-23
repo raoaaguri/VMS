@@ -9,9 +9,11 @@ export function AdminLineItems() {
   const navigate = useNavigate();
   const [lineItems, setLineItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [vendors, setVendors] = useState([]);
   const [filters, setFilters] = useState({
     status: 'ALL',
     priority: 'ALL',
+    vendor_id: 'ALL',
   });
   const { sortedData, requestSort, getSortIcon } = useSortableTable(lineItems);
 
@@ -19,12 +21,26 @@ export function AdminLineItems() {
     fetchLineItems();
   }, [filters]);
 
+  useEffect(() => {
+    loadVendors();
+  }, []);
+
+  const loadVendors = async () => {
+    try {
+      const data = await api.admin.getVendors();
+      setVendors(data);
+    } catch (err) {
+      console.error('Failed to load vendors:', err);
+    }
+  };
+
   const fetchLineItems = async () => {
     try {
       setLoading(true);
       const params = {};
       if (filters.status !== 'ALL') params.status = filters.status;
       if (filters.priority !== 'ALL') params.priority = filters.priority;
+      if (filters.vendor_id !== 'ALL') params.vendor_id = filters.vendor_id;
 
       const response = await api.admin.getLineItems(params);
       setLineItems(response.items || []);
@@ -68,42 +84,61 @@ export function AdminLineItems() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex gap-4 mb-6">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="CREATED">Created</option>
-                <option value="ACCEPTED">Accepted</option>
-                <option value="PLANNED">Planned</option>
-                <option value="DELIVERED">Delivered</option>
-                <option value="DELAYED">Delayed</option>
-              </select>
+        <div className="bg-white rounded-lg shadow p-3">
+          <div className="flex gap-4 mb-4 justify-between items-end">
+            <div className="flex items-center gap-x-4">
+              <div className="">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="CREATED">Created</option>
+                  <option value="ACCEPTED">Accepted</option>
+                  <option value="PLANNED">Planned</option>
+                  <option value="DELIVERED">Delivered</option>
+                  <option value="DELAYED">Delayed</option>
+                </select>
+              </div>
+              <div className="">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Priority
+                </label>
+                <select
+                  value={filters.priority}
+                  onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="ALL">All Priorities</option>
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="URGENT">Urgent</option>
+                </select>
+              </div>
+              <div className="">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Vendors
+                </label>
+                <select
+                  value={filters.vendor_id}
+                  onChange={(e) => setFilters({ ...filters, vendor_id: e.target.value })}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">All Vendors</option>
+                  {vendors.map(vendor => (
+                    <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Priority
-              </label>
-              <select
-                value={filters.priority}
-                onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="ALL">All Priorities</option>
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
-              </select>
-            </div>
+            <button onClick={() => {
+              setLineItemFilters({ status: 'ALL', priority: 'ALL', vendor_id: 'ALL' });
+            }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 
           {loading ? (

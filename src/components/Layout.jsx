@@ -33,7 +33,7 @@ export function Layout({ children, role }) {
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-3 sm:px-4 lg:px-5">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-8">
               <div className="flex items-center space-x-3">
@@ -58,11 +58,10 @@ export function Layout({ children, role }) {
                     <button
                       key={item.path}
                       onClick={() => navigate(item.path)}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-blue-50 text-blue-600'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                      }`}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                        }`}
                     >
                       <Icon className="w-4 h-4" />
                       <span>{item.label}</span>
@@ -89,7 +88,7 @@ export function Layout({ children, role }) {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full p-4 lg:p-5">
         {children}
       </main>
     </div>

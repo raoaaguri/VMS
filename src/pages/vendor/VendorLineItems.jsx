@@ -69,41 +69,46 @@ export function VendorLineItems() {
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex gap-4 mb-6">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="CREATED">Created</option>
-                <option value="ACCEPTED">Accepted</option>
-                <option value="PLANNED">Planned</option>
-                <option value="DELIVERED">Delivered</option>
-                <option value="DELAYED">Delayed</option>
-              </select>
-            </div>
+          <div className="flex gap-4 mb-6 justify-between items-end">
+            <div className="flex items-center gap-x-4">
+              <div className="">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="CREATED">Created</option>
+                  <option value="ACCEPTED">Accepted</option>
+                  <option value="PLANNED">Planned</option>
+                  <option value="DELIVERED">Delivered</option>
+                  <option value="DELAYED">Delayed</option>
+                </select>
+              </div>
 
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Priority
-              </label>
-              <select
-                value={filters.priority}
-                onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="ALL">All Priorities</option>
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
-              </select>
+              <div className="">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Priority
+                </label>
+                <select
+                  value={filters.priority}
+                  onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="ALL">All Priorities</option>
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="URGENT">Urgent</option>
+                </select>
+              </div>
             </div>
+            <button onClick={() => {
+              setLineItemFilters({ status: 'ALL', priority: 'ALL', vendor_id: 'ALL' });
+            }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 
           {loading ? (
@@ -146,6 +151,13 @@ export function VendorLineItems() {
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => requestSort('ReceivedQty')}
+                    >
+                      Received Qty {getSortIcon('ReceivedQty')}
+                    </th>
+
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => requestSort('line_priority')}
                     >
                       Priority {getSortIcon('line_priority')}
@@ -182,6 +194,9 @@ export function VendorLineItems() {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900">
                         {item.product_name}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {item.quantity}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                         {item.quantity}
