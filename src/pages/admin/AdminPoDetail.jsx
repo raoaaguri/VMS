@@ -158,7 +158,7 @@ export function AdminPoDetail() {
             <span>Back to Dashboard</span>
           </button>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-3">
               <Package className="w-8 h-8 text-blue-600" />
               <div>
@@ -364,28 +364,56 @@ export function AdminPoDetail() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Code</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Design Code</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">combination Code</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Style</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sub-Style</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Color</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sub-Color</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Polish</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Weight</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Received Qty</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">GST%</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">MRP</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Line Priority</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">MRP</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expected Date</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredLineItems.map(item => (
                   <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.product_code}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{item.design_code || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{item.combination_code || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{item.product_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{item.style || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{item.sub_style || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{item.region || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{item.color || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{item.sub_color || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{item.polish || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{item.size || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500 text-right">{item.weight || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.quantity}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{item.quantity}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{item.received_qty || 0}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.gst_percent}%</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{item.price}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{item.mrp}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500 text-right">{item.price}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500 text-right">{item.mrp}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {item.expected_delivery_date
+                        ? new Date(item.expected_delivery_date).toLocaleDateString()
+                        : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[item.status]}`}>
+                        {item.status}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-sm">
                       {editingLineItem === item.id ? (
                         <select
@@ -413,16 +441,6 @@ export function AdminPoDetail() {
                           )}
                         </div>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">
-                      {item.expected_delivery_date
-                        ? new Date(item.expected_delivery_date).toLocaleDateString()
-                        : '-'}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[item.status]}`}>
-                        {item.status}
-                      </span>
                     </td>
                   </tr>
                 ))}
@@ -475,7 +493,11 @@ export function AdminPoDetail() {
                       history.map((entry, idx) => (
                         <tr key={idx} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-sm whitespace-nowrap">
-                            {new Date(entry.changed_at).toLocaleString()}
+                            {new Date(entry.changed_at).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric"
+                            }).replace(/ /g, "-")}
                           </td>
                           <td className="px-4 py-3 text-sm">
                             {entry.users?.name} ({entry.changed_by_role})

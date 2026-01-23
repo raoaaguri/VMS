@@ -78,9 +78,6 @@ export function VendorDashboard() {
     }
   };
 
-  const getLineItemCount = (po) => {
-    return po.line_items?.length || 0;
-  };
 
   const getNearestExpectedDate = (po) => {
     if (!po.line_items || po.line_items.length === 0) return null;
@@ -249,9 +246,6 @@ export function VendorDashboard() {
                       Line Items
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nearest Expected Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -290,12 +284,7 @@ export function VendorDashboard() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {getLineItemCount(po)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {getNearestExpectedDate(po)
-                            ? new Date(getNearestExpectedDate(po)).toLocaleDateString()
-                            : '-'}
+                          {po.line_items_count}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <button

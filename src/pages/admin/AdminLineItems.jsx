@@ -129,7 +129,7 @@ export function AdminLineItems() {
                   onChange={(e) => setFilters({ ...filters, vendor_id: e.target.value })}
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">All Vendors</option>
+                  <option value="ALL">All Vendors</option>
                   {vendors.map(vendor => (
                     <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
                   ))}
@@ -137,7 +137,7 @@ export function AdminLineItems() {
               </div>
             </div>
             <button onClick={() => {
-              setLineItemFilters({ status: 'ALL', priority: 'ALL', vendor_id: 'ALL' });
+              setFilters({ status: 'ALL', priority: 'ALL', vendor_id: 'ALL' });
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 

@@ -14,6 +14,8 @@ export function VendorManagement() {
   const [editingVendor, setEditingVendor] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all'); // all, pending, active, rejected
   const [expandedActionsId, setExpandedActionsId] = useState(null);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [approvalModalData, setApprovalModalData] = useState({ vendor: null, action: null });
 
   const navigate = useNavigate();
 
@@ -105,31 +107,34 @@ export function VendorManagement() {
     setShowVendorForm(true);
   };
 
-  const handleApproveVendor = async (vendorId) => {
-    if (!confirm('Are you sure you want to approve this vendor? They will be able to login and access the system.')) {
-      return;
-    }
+  const openApprovalModal = (vendor, action) => {
+    setApprovalModalData({ vendor, action });
+    setShowApprovalModal(true);
+    setExpandedActionsId(null);
+  };
 
+  const closeApprovalModal = () => {
+    setShowApprovalModal(false);
+    setApprovalModalData({ vendor: null, action: null });
+  };
+
+  const handleApproveVendor = async (vendorId) => {
     try {
       await api.admin.approveVendor(vendorId);
       setSuccess('Vendor approved successfully!');
       await loadVendors();
-      setExpandedActionsId(null);
+      closeApprovalModal();
     } catch (err) {
       setError(err.message);
     }
   };
 
   const handleRejectVendor = async (vendorId) => {
-    if (!confirm('Are you sure you want to reject this vendor? They will not be able to login.')) {
-      return;
-    }
-
     try {
       await api.admin.rejectVendor(vendorId);
       setSuccess('Vendor rejected successfully');
       await loadVendors();
-      setExpandedActionsId(null);
+      closeApprovalModal();
     } catch (err) {
       setError(err.message);
     }
@@ -138,7 +143,7 @@ export function VendorManagement() {
   const handleToggleVendorStatus = async (vendorId, currentStatus) => {
     const newStatus = !currentStatus;
     const action = newStatus ? 'activate' : 'deactivate';
-    
+
     if (!confirm(`Are you sure you want to ${action} this vendor?`)) {
       return;
     }
@@ -212,22 +217,21 @@ export function VendorManagement() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex space-x-2">
             {[
-                        { value: 'all', label: 'All Vendors', count: vendors.length },
-                        { value: 'pending', label: 'Pending', count: vendors.filter(v => v.status === 'PENDING_APPROVAL').length },
-                        { value: 'active', label: 'Active', count: vendors.filter(v => v.status === 'ACTIVE').length },
-                        { value: 'inactive', label: 'Inactive', count: vendors.filter(v => !v.is_active).length },
-                        { value: 'rejected', label: 'Rejected', count: vendors.filter(v => v.status === 'REJECTED').length }
+              { value: 'all', label: 'All Vendors', count: vendors.length },
+              { value: 'pending', label: 'Pending', count: vendors.filter(v => v.status === 'PENDING_APPROVAL').length },
+              { value: 'active', label: 'Active', count: vendors.filter(v => v.status === 'ACTIVE').length },
+              { value: 'inactive', label: 'Inactive', count: vendors.filter(v => !v.is_active).length },
+              { value: 'rejected', label: 'Rejected', count: vendors.filter(v => v.status === 'REJECTED').length }
             ].map(tab => (
               <button
                 key={tab.value}
                 onClick={() => {
                   setFilterStatus(tab.value);
                 }}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  filterStatus === tab.value
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${filterStatus === tab.value
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-100'
+                  }`}
               >
                 {tab.label} <span className="ml-2 text-xs bg-gray-200 rounded-full px-2 py-1">{tab.count}</span>
               </button>
@@ -514,24 +518,22 @@ export function VendorManagement() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${
-                          vendor.status === 'ACTIVE'
-                            ? 'bg-green-100 text-green-800'
-                            : vendor.status === 'PENDING_APPROVAL'
+                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${vendor.status === 'ACTIVE'
+                          ? 'bg-green-100 text-green-800'
+                          : vendor.status === 'PENDING_APPROVAL'
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
-                        }`}>
+                          }`}>
                           {vendor.status === 'PENDING_APPROVAL' ? '⏳ Pending' : vendor.status === 'ACTIVE' ? '✓ Active' : '✕ Rejected'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button
                           onClick={() => handleToggleVendorStatus(vendor.id, vendor.is_active)}
-                          className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                            vendor.is_active
-                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                          }`}
+                          className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${vendor.is_active
+                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                            }`}
                         >
                           {vendor.is_active ? '🟢 Active' : '⭕ Inactive'}
                         </button>
@@ -551,14 +553,14 @@ export function VendorManagement() {
                               {vendor.status === 'PENDING_APPROVAL' && (
                                 <>
                                   <button
-                                    onClick={() => handleApproveVendor(vendor.id)}
+                                    onClick={() => openApprovalModal(vendor, 'approve')}
                                     className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 font-medium flex items-center space-x-2 border-b border-gray-100"
                                   >
                                     <CheckCircle className="w-4 h-4" />
                                     <span>Approve Vendor</span>
                                   </button>
                                   <button
-                                    onClick={() => handleRejectVendor(vendor.id)}
+                                    onClick={() => openApprovalModal(vendor, 'reject')}
                                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium flex items-center space-x-2"
                                   >
                                     <XCircle className="w-4 h-4" />
@@ -586,6 +588,76 @@ export function VendorManagement() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Approval Modal */}
+        {showApprovalModal && approvalModalData.vendor && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {approvalModalData.action === 'approve' ? 'Approve Vendor' : 'Reject Vendor'}
+                  </h2>
+                  <button
+                    onClick={closeApprovalModal}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <h3 className="font-medium text-gray-900 mb-2">{approvalModalData.vendor.name}</h3>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Code:</span> {approvalModalData.vendor.code}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    <span className="font-medium">Contact:</span> {approvalModalData.vendor.contact_person}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    <span className="font-medium">Email:</span> {approvalModalData.vendor.contact_email}
+                  </p>
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                  {approvalModalData.action === 'approve' ? (
+                    <p className="text-sm text-yellow-800">
+                      <span className="font-medium">⚠️ Note:</span> Once approved, this vendor will be able to login and access the system.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-yellow-800">
+                      <span className="font-medium">⚠️ Note:</span> Once rejected, this vendor will not be able to login. This action cannot be undone.
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    onClick={closeApprovalModal}
+                    className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (approvalModalData.action === 'approve') {
+                        handleApproveVendor(approvalModalData.vendor.id);
+                      } else {
+                        handleRejectVendor(approvalModalData.vendor.id);
+                      }
+                    }}
+                    className={`flex-1 text-white py-2 px-4 rounded-lg transition-colors font-medium ${approvalModalData.action === 'approve'
+                      ? 'bg-green-600 hover:bg-green-700'
+                      : 'bg-red-600 hover:bg-red-700'
+                      }`}
+                  >
+                    {approvalModalData.action === 'approve' ? 'Approve' : 'Reject'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

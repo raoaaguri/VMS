@@ -1,4 +1,4 @@
-import { getDbClient, query, queryOne } from '../../config/db.js';
+import { getDbClient, query, queryOne } from "../../config/db.js";
 
 export async function findAll(filters = {}) {
   let sql = `
@@ -10,7 +10,8 @@ export async function findAll(filters = {}) {
         'code', v.code,
         'contact_person', v.contact_person,
         'contact_email', v.contact_email
-      ) as vendor
+      ) as vendor,
+      (SELECT COUNT(*) FROM purchase_order_line_items WHERE po_id = po.id) as line_items_count
     FROM purchase_orders po
     LEFT JOIN vendors v ON po.vendor_id = v.id
   `;
@@ -40,7 +41,7 @@ export async function findAll(filters = {}) {
   }
 
   if (conditions.length > 0) {
-    sql += ` WHERE ${conditions.join(' AND ')}`;
+    sql += ` WHERE ${conditions.join(" AND ")}`;
   }
 
   sql += ` ORDER BY po.created_at DESC`;
@@ -75,9 +76,9 @@ export async function findByPoNumber(poNumber) {
   const db = getDbClient();
 
   const { data, error } = await db
-    .from('purchase_orders')
-    .select('*')
-    .eq('po_number', poNumber)
+    .from("purchase_orders")
+    .select("*")
+    .eq("po_number", poNumber)
     .maybeSingle();
 
   if (error) throw error;
@@ -88,7 +89,7 @@ export async function create(poData) {
   const db = getDbClient();
 
   const { data, error } = await db
-    .from('purchase_orders')
+    .from("purchase_orders")
     .insert(poData)
     .select()
     .single();
@@ -102,13 +103,13 @@ export async function update(id, poData) {
 
   const updateData = {
     ...poData,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   };
 
   const { data, error } = await db
-    .from('purchase_orders')
+    .from("purchase_orders")
     .update(updateData)
-    .eq('id', id)
+    .eq("id", id)
     .select()
     .single();
 
@@ -117,28 +118,73 @@ export async function update(id, poData) {
 }
 
 export async function findLineItems(poId) {
-  const db = getDbClient();
+  const sql = `
+    SELECT 
+      id,
+      po_id,
+      product_code,
+      product_name,
+      quantity,
+      gst_percent,
+      price,
+      mrp,
+      line_priority,
+      expected_delivery_date,
+      status,
+      design_code,
+      combination_code,
+      style,
+      sub_style,
+      region,
+      color,
+      sub_color,
+      polish,
+      size,
+      weight,
+      received_qty,
+      created_at,
+      updated_at
+    FROM purchase_order_line_items
+    WHERE po_id = $1
+    ORDER BY created_at ASC
+  `;
 
-  const { data, error } = await db
-    .from('purchase_order_line_items')
-    .select('*')
-    .eq('po_id', poId)
-    .order('created_at', { ascending: true });
-
-  if (error) throw error;
+  const data = await query(sql, [poId]);
   return data;
 }
 
 export async function findLineItemById(id) {
-  const db = getDbClient();
+  const sql = `
+    SELECT 
+      id,
+      po_id,
+      product_code,
+      product_name,
+      quantity,
+      gst_percent,
+      price,
+      mrp,
+      line_priority,
+      expected_delivery_date,
+      status,
+      design_code,
+      combination_code,
+      style,
+      sub_style,
+      region,
+      color,
+      sub_color,
+      polish,
+      size,
+      weight,
+      received_qty,
+      created_at,
+      updated_at
+    FROM purchase_order_line_items
+    WHERE id = $1
+  `;
 
-  const { data, error } = await db
-    .from('purchase_order_line_items')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (error) throw error;
+  const data = await queryOne(sql, [id]);
   return data;
 }
 
@@ -146,7 +192,7 @@ export async function createLineItem(lineItemData) {
   const db = getDbClient();
 
   const { data, error } = await db
-    .from('purchase_order_line_items')
+    .from("purchase_order_line_items")
     .insert(lineItemData)
     .select()
     .single();
@@ -159,7 +205,7 @@ export async function createLineItems(lineItemsData) {
   const db = getDbClient();
 
   const { data, error } = await db
-    .from('purchase_order_line_items')
+    .from("purchase_order_line_items")
     .insert(lineItemsData)
     .select();
 
@@ -172,13 +218,13 @@ export async function updateLineItem(id, lineItemData) {
 
   const updateData = {
     ...lineItemData,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   };
 
   const { data, error } = await db
-    .from('purchase_order_line_items')
+    .from("purchase_order_line_items")
     .update(updateData)
-    .eq('id', id)
+    .eq("id", id)
     .select()
     .single();
 
@@ -190,10 +236,10 @@ export async function countLineItemsByStatus(poId, status) {
   const db = getDbClient();
 
   const { count, error } = await db
-    .from('purchase_order_line_items')
-    .select('*', { count: 'exact', head: true })
-    .eq('po_id', poId)
-    .eq('status', status);
+    .from("purchase_order_line_items")
+    .select("*", { count: "exact", head: true })
+    .eq("po_id", poId)
+    .eq("status", status);
 
   if (error) throw error;
   return count;
@@ -203,9 +249,9 @@ export async function countTotalLineItems(poId) {
   const db = getDbClient();
 
   const { count, error } = await db
-    .from('purchase_order_line_items')
-    .select('*', { count: 'exact', head: true })
-    .eq('po_id', poId);
+    .from("purchase_order_line_items")
+    .select("*", { count: "exact", head: true })
+    .eq("po_id", poId);
 
   if (error) throw error;
   return count;
@@ -215,7 +261,7 @@ export async function createPoHistory(historyData) {
   const db = getDbClient();
 
   const { data, error } = await db
-    .from('po_history')
+    .from("po_history")
     .insert(historyData)
     .select()
     .single();
@@ -228,7 +274,7 @@ export async function createLineItemHistory(historyData) {
   const db = getDbClient();
 
   const { data, error } = await db
-    .from('po_line_item_history')
+    .from("po_line_item_history")
     .insert(historyData)
     .select()
     .single();
@@ -265,25 +311,25 @@ export async function getPoHistory(poId) {
 
   const [poHistoryData, lineItemHistoryData] = await Promise.all([
     query(poHistorySql, [poId]),
-    query(lineItemHistorySql, [poId])
+    query(lineItemHistorySql, [poId]),
   ]);
 
-  const poHistory = poHistoryData.map(h => ({
+  const poHistory = poHistoryData.map((h) => ({
     ...h,
-    level: 'PO',
-    line_item_reference: null
+    level: "PO",
+    line_item_reference: null,
   }));
 
-  const lineItemHistory = lineItemHistoryData.map(h => ({
+  const lineItemHistory = lineItemHistoryData.map((h) => ({
     ...h,
-    level: 'LINE_ITEM',
+    level: "LINE_ITEM",
     line_item_reference: h.purchase_order_line_items
       ? `${h.purchase_order_line_items.product_code} - ${h.purchase_order_line_items.product_name}`
-      : 'Unknown Item'
+      : "Unknown Item",
   }));
 
   const allHistory = [...poHistory, ...lineItemHistory].sort(
-    (a, b) => new Date(b.changed_at) - new Date(a.changed_at)
+    (a, b) => new Date(b.changed_at) - new Date(a.changed_at),
   );
 
   return allHistory;
@@ -293,10 +339,10 @@ export async function getAllHistory(filters = {}) {
   const params = [];
   let paramNum = 1;
 
-  const whereClause = filters.vendor_id 
-    ? ` WHERE po.vendor_id = $${paramNum++}` 
-    : '';
-  
+  const whereClause = filters.vendor_id
+    ? ` WHERE po.vendor_id = $${paramNum++}`
+    : "";
+
   if (filters.vendor_id) {
     params.push(filters.vendor_id);
   }
@@ -337,27 +383,28 @@ export async function getAllHistory(filters = {}) {
 
   const [poHistoryData, lineItemHistoryData] = await Promise.all([
     query(poHistorySql, params),
-    query(lineItemHistorySql, params)
+    query(lineItemHistorySql, params),
   ]);
 
-  const poHistory = poHistoryData.map(h => ({
+  const poHistory = poHistoryData.map((h) => ({
     ...h,
-    level: 'PO',
-    changed_by_name: h.users?.name || 'Unknown',
-    line_item_reference: null
+    level: "PO",
+    changed_by_name: h.users?.name || "Unknown",
+    line_item_reference: null,
   }));
 
-  const lineItemHistory = lineItemHistoryData.map(h => ({
+  const lineItemHistory = lineItemHistoryData.map((h) => ({
     ...h,
-    level: 'LINE_ITEM',
-    changed_by_name: h.users?.name || 'Unknown',
-    line_item_reference: h.product_code && h.product_name
-      ? `${h.product_code} - ${h.product_name}`
-      : 'Unknown Item'
+    level: "LINE_ITEM",
+    changed_by_name: h.users?.name || "Unknown",
+    line_item_reference:
+      h.product_code && h.product_name
+        ? `${h.product_code} - ${h.product_name}`
+        : "Unknown Item",
   }));
 
   const allHistory = [...poHistory, ...lineItemHistory].sort(
-    (a, b) => new Date(b.changed_at) - new Date(a.changed_at)
+    (a, b) => new Date(b.changed_at) - new Date(a.changed_at),
   );
 
   return allHistory;

@@ -60,6 +60,17 @@ CREATE TABLE IF NOT EXISTS purchase_order_line_items (
   line_priority text NOT NULL CHECK (line_priority IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')),
   expected_delivery_date date,
   status text NOT NULL DEFAULT 'CREATED' CHECK (status IN ('CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED')),
+  design_code text,
+  combination_code text,
+  style text,
+  sub_style text,
+  region text,
+  color text,
+  sub_color text,
+  polish text,
+  size text,
+  weight numeric,
+  received_qty numeric DEFAULT 0,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );

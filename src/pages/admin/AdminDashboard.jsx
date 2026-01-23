@@ -91,10 +91,6 @@ export function AdminDashboard() {
     }
   };
 
-  const getLineItemCount = (po) => {
-    return po.line_items?.length || 0;
-  };
-
   return (
     <Layout role="admin">
       <div className="space-y-6">
@@ -329,7 +325,7 @@ export function AdminDashboard() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {getLineItemCount(po)}
+                          {po.line_items_count}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <button

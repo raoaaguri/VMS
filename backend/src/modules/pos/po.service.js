@@ -1,5 +1,9 @@
-import * as poRepository from './po.repository.js';
-import { NotFoundError, BadRequestError, ForbiddenError } from '../../utils/httpErrors.js';
+import * as poRepository from "./po.repository.js";
+import {
+  NotFoundError,
+  BadRequestError,
+  ForbiddenError,
+} from "../../utils/httpErrors.js";
 
 export async function getAllPos(filters = {}) {
   return await poRepository.findAll(filters);
@@ -7,13 +11,13 @@ export async function getAllPos(filters = {}) {
 
 export async function getPoById(id) {
   const po = await poRepository.findById(id);
-  if (!po) throw new NotFoundError('Purchase order not found');
+  if (!po) throw new NotFoundError("Purchase order not found");
 
   const lineItems = await poRepository.findLineItems(id);
 
   return {
     ...po,
-    line_items: lineItems
+    line_items: lineItems,
   };
 }
 
@@ -21,18 +25,18 @@ export async function createPo(poData, lineItemsData) {
   const existingPo = await poRepository.findByPoNumber(poData.po_number);
 
   if (existingPo) {
-    throw new BadRequestError('PO number already exists');
+    throw new BadRequestError("PO number already exists");
   }
 
   const po = await poRepository.create({
     ...poData,
-    status: 'CREATED'
+    status: "CREATED",
   });
 
-  const lineItems = lineItemsData.map(item => ({
+  const lineItems = lineItemsData.map((item) => ({
     ...item,
     po_id: po.id,
-    status: 'CREATED'
+    status: "CREATED",
   }));
 
   await poRepository.createLineItems(lineItems);
@@ -43,10 +47,10 @@ export async function createPo(poData, lineItemsData) {
 export async function updatePoPriority(id, priority, user) {
   const po = await poRepository.findById(id);
 
-  if (!po) throw new NotFoundError('Purchase order not found');
+  if (!po) throw new NotFoundError("Purchase order not found");
 
-  if (po.status === 'DELIVERED') {
-    throw new BadRequestError('Cannot update priority of delivered PO');
+  if (po.status === "DELIVERED") {
+    throw new BadRequestError("Cannot update priority of delivered PO");
   }
 
   const oldPriority = po.priority;
@@ -57,10 +61,10 @@ export async function updatePoPriority(id, priority, user) {
       po_id: id,
       changed_by_user_id: user.id,
       changed_by_role: user.role,
-      action_type: 'PRIORITY_CHANGE',
-      field_name: 'priority',
+      action_type: "PRIORITY_CHANGE",
+      field_name: "priority",
       old_value: oldPriority,
-      new_value: priority
+      new_value: priority,
     });
   }
 
@@ -70,7 +74,7 @@ export async function updatePoPriority(id, priority, user) {
 export async function updatePoStatus(id, status, user) {
   const po = await poRepository.findById(id);
 
-  if (!po) throw new NotFoundError('Purchase order not found');
+  if (!po) throw new NotFoundError("Purchase order not found");
 
   const oldStatus = po.status;
   const updatedPo = await poRepository.update(id, { status });
@@ -80,10 +84,10 @@ export async function updatePoStatus(id, status, user) {
       po_id: id,
       changed_by_user_id: user.id,
       changed_by_role: user.role,
-      action_type: 'STATUS_CHANGE',
-      field_name: 'status',
+      action_type: "STATUS_CHANGE",
+      field_name: "status",
       old_value: oldStatus,
-      new_value: status
+      new_value: status,
     });
   }
 
@@ -93,22 +97,24 @@ export async function updatePoStatus(id, status, user) {
 export async function acceptPo(id, lineItemUpdates, user) {
   const po = await poRepository.findById(id);
 
-  if (!po) throw new NotFoundError('Purchase order not found');
+  if (!po) throw new NotFoundError("Purchase order not found");
 
-  if (po.status !== 'CREATED') {
-    throw new BadRequestError('PO can only be accepted when in CREATED status');
+  if (po.status !== "CREATED") {
+    throw new BadRequestError("PO can only be accepted when in CREATED status");
   }
 
   for (const update of lineItemUpdates) {
     if (!update.expected_delivery_date) {
-      throw new BadRequestError('Expected delivery date is required for all line items');
+      throw new BadRequestError(
+        "Expected delivery date is required for all line items",
+      );
     }
 
     const oldItem = await poRepository.findLineItemById(update.line_item_id);
 
     await poRepository.updateLineItem(update.line_item_id, {
       expected_delivery_date: update.expected_delivery_date,
-      status: 'ACCEPTED'
+      status: "ACCEPTED",
     });
 
     if (user) {
@@ -118,10 +124,10 @@ export async function acceptPo(id, lineItemUpdates, user) {
         line_item_id: update.line_item_id,
         changed_by_user_id: user.id,
         changed_by_role: user.role,
-        action_type: 'STATUS_CHANGE',
-        field_name: 'status',
-        old_value: 'CREATED',
-        new_value: 'ACCEPTED'
+        action_type: "STATUS_CHANGE",
+        field_name: "status",
+        old_value: "CREATED",
+        new_value: "ACCEPTED",
       });
 
       // Create history for expected delivery date
@@ -130,10 +136,10 @@ export async function acceptPo(id, lineItemUpdates, user) {
         line_item_id: update.line_item_id,
         changed_by_user_id: user.id,
         changed_by_role: user.role,
-        action_type: 'EXPECTED_DATE_CHANGE',
-        field_name: 'expected_delivery_date',
+        action_type: "EXPECTED_DATE_CHANGE",
+        field_name: "expected_delivery_date",
         old_value: oldItem.expected_delivery_date || null,
-        new_value: update.expected_delivery_date
+        new_value: update.expected_delivery_date,
       });
     }
   }
@@ -143,53 +149,66 @@ export async function acceptPo(id, lineItemUpdates, user) {
       po_id: id,
       changed_by_user_id: user.id,
       changed_by_role: user.role,
-      action_type: 'STATUS_CHANGE',
-      field_name: 'status',
-      old_value: 'CREATED',
-      new_value: 'ACCEPTED'
+      action_type: "STATUS_CHANGE",
+      field_name: "status",
+      old_value: "CREATED",
+      new_value: "ACCEPTED",
     });
   }
 
-  await poRepository.update(id, { status: 'ACCEPTED' });
+  await poRepository.update(id, { status: "ACCEPTED" });
 
   return await getPoById(id);
 }
 
-export async function updateLineItemExpectedDate(poId, lineItemId, expectedDeliveryDate, user) {
+export async function updateLineItemExpectedDate(
+  poId,
+  lineItemId,
+  expectedDeliveryDate,
+  user,
+) {
   const lineItem = await poRepository.findLineItemById(lineItemId);
 
-  if (!lineItem) throw new NotFoundError('Line item not found');
+  if (!lineItem) throw new NotFoundError("Line item not found");
 
   if (lineItem.po_id !== poId) {
-    throw new BadRequestError('Line item does not belong to this PO');
+    throw new BadRequestError("Line item does not belong to this PO");
   }
 
   // Check vendor ownership if this is a vendor request
-  if (user && user.role === 'VENDOR') {
+  if (user && user.role === "VENDOR") {
     if (!user.vendor_id) {
-      throw new ForbiddenError('Your user account is not associated with a vendor');
+      throw new ForbiddenError(
+        "Your user account is not associated with a vendor",
+      );
     }
-    
+
     const po = await poRepository.findById(poId);
-    if (!po) throw new NotFoundError('Purchase order not found');
-    
+    if (!po) throw new NotFoundError("Purchase order not found");
+
     if (!po.vendor_id) {
-      throw new BadRequestError('This purchase order is not associated with a vendor');
+      throw new BadRequestError(
+        "This purchase order is not associated with a vendor",
+      );
     }
-    
+
     // Compare UUIDs as strings (normalize whitespace)
     if (String(po.vendor_id).trim() !== String(user.vendor_id).trim()) {
-      throw new ForbiddenError('You do not have permission to update this line item');
+      throw new ForbiddenError(
+        "You do not have permission to update this line item",
+      );
     }
   }
 
-  if (lineItem.status === 'DELIVERED') {
-    throw new BadRequestError('Cannot update expected date for delivered line item');
+  if (lineItem.status === "DELIVERED") {
+    throw new BadRequestError(
+      "Cannot update expected date for delivered line item",
+    );
   }
 
   const oldDate = lineItem.expected_delivery_date;
   const updatedItem = await poRepository.updateLineItem(lineItemId, {
-    expected_delivery_date: expectedDeliveryDate
+    expected_delivery_date: expectedDeliveryDate,
   });
 
   if (oldDate !== expectedDeliveryDate && user) {
@@ -198,10 +217,10 @@ export async function updateLineItemExpectedDate(poId, lineItemId, expectedDeliv
       line_item_id: lineItemId,
       changed_by_user_id: user.id,
       changed_by_role: user.role,
-      action_type: 'DATE_CHANGE',
-      field_name: 'expected_delivery_date',
+      action_type: "DATE_CHANGE",
+      field_name: "expected_delivery_date",
       old_value: oldDate,
-      new_value: expectedDeliveryDate
+      new_value: expectedDeliveryDate,
     });
   }
 
@@ -211,37 +230,43 @@ export async function updateLineItemExpectedDate(poId, lineItemId, expectedDeliv
 export async function updateLineItemStatus(poId, lineItemId, status, user) {
   const lineItem = await poRepository.findLineItemById(lineItemId);
 
-  if (!lineItem) throw new NotFoundError('Line item not found');
+  if (!lineItem) throw new NotFoundError("Line item not found");
 
   if (lineItem.po_id !== poId) {
-    throw new BadRequestError('Line item does not belong to this PO');
+    throw new BadRequestError("Line item does not belong to this PO");
   }
 
   // Check vendor ownership if this is a vendor request
-  if (user && user.role === 'VENDOR') {
+  if (user && user.role === "VENDOR") {
     if (!user.vendor_id) {
-      throw new ForbiddenError('Your user account is not associated with a vendor');
+      throw new ForbiddenError(
+        "Your user account is not associated with a vendor",
+      );
     }
-    
+
     const po = await poRepository.findById(poId);
-    if (!po) throw new NotFoundError('Purchase order not found');
-    
+    if (!po) throw new NotFoundError("Purchase order not found");
+
     if (!po.vendor_id) {
-      throw new BadRequestError('This purchase order is not associated with a vendor');
+      throw new BadRequestError(
+        "This purchase order is not associated with a vendor",
+      );
     }
-    
+
     // Compare UUIDs as strings (normalize whitespace)
     if (String(po.vendor_id).trim() !== String(user.vendor_id).trim()) {
-      throw new ForbiddenError('You do not have permission to update this line item');
+      throw new ForbiddenError(
+        "You do not have permission to update this line item",
+      );
     }
   }
 
-  const statusProgression = ['CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED'];
+  const statusProgression = ["CREATED", "ACCEPTED", "PLANNED", "DELIVERED"];
   const currentIndex = statusProgression.indexOf(lineItem.status);
   const newIndex = statusProgression.indexOf(status);
 
   if (newIndex < currentIndex) {
-    throw new BadRequestError('Cannot move line item to a previous status');
+    throw new BadRequestError("Cannot move line item to a previous status");
   }
 
   const oldStatus = lineItem.status;
@@ -253,18 +278,21 @@ export async function updateLineItemStatus(poId, lineItemId, status, user) {
       line_item_id: lineItemId,
       changed_by_user_id: user.id,
       changed_by_role: user.role,
-      action_type: 'STATUS_CHANGE',
-      field_name: 'status',
+      action_type: "STATUS_CHANGE",
+      field_name: "status",
       old_value: oldStatus,
-      new_value: status
+      new_value: status,
     });
   }
 
   const totalCount = await poRepository.countTotalLineItems(poId);
-  const deliveredCount = await poRepository.countLineItemsByStatus(poId, 'DELIVERED');
+  const deliveredCount = await poRepository.countLineItemsByStatus(
+    poId,
+    "DELIVERED",
+  );
 
   if (deliveredCount === totalCount) {
-    await poRepository.update(poId, { status: 'DELIVERED' });
+    await poRepository.update(poId, { status: "DELIVERED" });
   }
 
   return await poRepository.findLineItemById(lineItemId);
@@ -273,18 +301,20 @@ export async function updateLineItemStatus(poId, lineItemId, status, user) {
 export async function updateLineItemPriority(poId, lineItemId, priority, user) {
   const lineItem = await poRepository.findLineItemById(lineItemId);
 
-  if (!lineItem) throw new NotFoundError('Line item not found');
+  if (!lineItem) throw new NotFoundError("Line item not found");
 
   if (lineItem.po_id !== poId) {
-    throw new BadRequestError('Line item does not belong to this PO');
+    throw new BadRequestError("Line item does not belong to this PO");
   }
 
-  if (lineItem.status === 'DELIVERED') {
-    throw new BadRequestError('Cannot update priority for delivered line item');
+  if (lineItem.status === "DELIVERED") {
+    throw new BadRequestError("Cannot update priority for delivered line item");
   }
 
   const oldPriority = lineItem.line_priority;
-  const updatedItem = await poRepository.updateLineItem(lineItemId, { line_priority: priority });
+  const updatedItem = await poRepository.updateLineItem(lineItemId, {
+    line_priority: priority,
+  });
 
   if (oldPriority !== priority && user) {
     await poRepository.createLineItemHistory({
@@ -292,10 +322,10 @@ export async function updateLineItemPriority(poId, lineItemId, priority, user) {
       line_item_id: lineItemId,
       changed_by_user_id: user.id,
       changed_by_role: user.role,
-      action_type: 'PRIORITY_CHANGE',
-      field_name: 'line_priority',
+      action_type: "PRIORITY_CHANGE",
+      field_name: "line_priority",
       old_value: oldPriority,
-      new_value: priority
+      new_value: priority,
     });
   }
 
@@ -305,10 +335,10 @@ export async function updateLineItemPriority(poId, lineItemId, priority, user) {
 export async function updatePoClosure(id, closureData, user) {
   const po = await poRepository.findById(id);
 
-  if (!po) throw new NotFoundError('Purchase order not found');
+  if (!po) throw new NotFoundError("Purchase order not found");
 
   if (closureData.closed_amount && closureData.closed_amount < 0) {
-    throw new BadRequestError('Closed amount cannot be negative');
+    throw new BadRequestError("Closed amount cannot be negative");
   }
 
   const oldClosureStatus = po.closure_status;
@@ -317,7 +347,7 @@ export async function updatePoClosure(id, closureData, user) {
   const updatedPo = await poRepository.update(id, {
     closure_status: closureData.closure_status,
     closed_amount: closureData.closed_amount,
-    closed_amount_currency: 'INR'
+    closed_amount_currency: "INR",
   });
 
   if (oldClosureStatus !== closureData.closure_status) {
@@ -325,10 +355,10 @@ export async function updatePoClosure(id, closureData, user) {
       po_id: id,
       changed_by_user_id: user.id,
       changed_by_role: user.role,
-      action_type: 'CLOSURE_CHANGE',
-      field_name: 'closure_status',
+      action_type: "CLOSURE_CHANGE",
+      field_name: "closure_status",
       old_value: oldClosureStatus,
-      new_value: closureData.closure_status
+      new_value: closureData.closure_status,
     });
   }
 
@@ -337,10 +367,10 @@ export async function updatePoClosure(id, closureData, user) {
       po_id: id,
       changed_by_user_id: user.id,
       changed_by_role: user.role,
-      action_type: 'CLOSURE_CHANGE',
-      field_name: 'closed_amount',
+      action_type: "CLOSURE_CHANGE",
+      field_name: "closed_amount",
       old_value: String(oldClosedAmount || 0),
-      new_value: String(closureData.closed_amount)
+      new_value: String(closureData.closed_amount),
     });
   }
 
@@ -350,7 +380,7 @@ export async function updatePoClosure(id, closureData, user) {
 export async function getPoHistory(poId) {
   const po = await poRepository.findById(poId);
 
-  if (!po) throw new NotFoundError('Purchase order not found');
+  if (!po) throw new NotFoundError("Purchase order not found");
 
   return await poRepository.getPoHistory(poId);
 }
