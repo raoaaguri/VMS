@@ -350,7 +350,6 @@ export function VendorPoDetail() {
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">MRP</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expected Date</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -398,19 +397,6 @@ export function VendorPoDetail() {
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[item.status]}`}>
                         {item.status}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {!showAcceptForm && item.status !== 'DELIVERED' && item.status !== 'CREATED' && (
-                        <select
-                          value={item.status}
-                          onChange={(e) => handleUpdateLineItemStatus(item.id, e.target.value)}
-                          className="px-2 py-1 border border-gray-300 rounded text-xs"
-                        >
-                          {STATUSES.map(status => (
-                            <option key={status} value={status}>{status}</option>
-                          ))}
-                        </select>
-                      )}
                     </td>
                   </tr>
                 ))}
