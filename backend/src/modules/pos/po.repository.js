@@ -143,6 +143,13 @@ export async function findLineItems(poId) {
       weight,
       received_qty,
       created_at,
+      order_rate,
+      landing_cost,
+      hsn_sac_code,
+      order_amount,
+      item_code,
+      order_no,
+      item_name,
       updated_at
     FROM purchase_order_line_items
     WHERE po_id = $1
