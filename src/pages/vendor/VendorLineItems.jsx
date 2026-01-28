@@ -9,6 +9,9 @@ export function VendorLineItems() {
   const navigate = useNavigate();
   const [lineItems, setLineItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [filters, setFilters] = useState({
     status: 'ALL',
     priority: 'ALL',
@@ -17,7 +20,12 @@ export function VendorLineItems() {
 
   useEffect(() => {
     fetchLineItems();
-  }, [filters]);
+  }, [filters, page, pageSize]);
+
+  const updateFilters = (nextFilters) => {
+    setPage(1);
+    setFilters(nextFilters);
+  };
 
   const fetchLineItems = async () => {
     try {
@@ -26,13 +34,32 @@ export function VendorLineItems() {
       if (filters.status !== 'ALL') params.status = filters.status;
       if (filters.priority !== 'ALL') params.priority = filters.priority;
 
+      params.page = page;
+      params.limit = pageSize;
+
       const response = await api.vendor.getLineItems(params);
       setLineItems(response.items || []);
+      setTotal(response.total || 0);
     } catch (error) {
       console.error('Failed to fetch line items:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const getVisiblePageNumbers = () => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+
+    let start = Math.max(1, page - 2);
+    let end = Math.min(totalPages, start + 4);
+
+    if (end - start < 4) {
+      start = Math.max(1, end - 4);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   };
 
   const getPriorityColor = (priority) => {
@@ -77,15 +104,15 @@ export function VendorLineItems() {
                 </label>
                 <select
                   value={filters.status}
-                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  onChange={(e) => updateFilters({ ...filters, status: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="ALL">All Statuses</option>
-                  <option value="CREATED">Created</option>
-                  <option value="ACCEPTED">Accepted</option>
-                  <option value="PLANNED">Planned</option>
-                  <option value="DELIVERED">Delivered</option>
-                  <option value="DELAYED">Delayed</option>
+                  <option value="Cancelled">Cancelled</option>
+                  <option value="Fully Purchased">Fully Purchased</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Partially Purchased">Partially Purchased</option>
+                  <option value="Writeoff done">Writeoff done</option>
                 </select>
               </div>
 
@@ -95,7 +122,7 @@ export function VendorLineItems() {
                 </label>
                 <select
                   value={filters.priority}
-                  onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+                  onChange={(e) => updateFilters({ ...filters, priority: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="ALL">All Priorities</option>
@@ -107,7 +134,7 @@ export function VendorLineItems() {
               </div>
             </div>
             <button onClick={() => {
-              setLineItemFilters({ status: 'ALL', priority: 'ALL', vendor_id: 'ALL' });
+              updateFilters({ status: 'ALL', priority: 'ALL' });
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 
@@ -233,8 +260,56 @@ export function VendorLineItems() {
           )}
 
           {!loading && sortedData.length > 0 && (
-            <div className="mt-4 text-sm text-gray-600">
-              Showing {sortedData.length} line item{sortedData.length !== 1 ? 's' : ''}
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-gray-600">
+                Showing {total === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total}
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Rows per page</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPage(1);
+                      setPageSize(parseInt(e.target.value, 10));
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={75}>75</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className={`px-3 py-2 text-sm rounded-md border ${page <= 1 ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                  >
+                    Prev
+                  </button>
+                  {getVisiblePageNumbers().map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPage(p)}
+                      className={`px-3 py-2 text-sm rounded-md border ${p === page ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className={`px-3 py-2 text-sm rounded-md border ${page >= totalPages ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

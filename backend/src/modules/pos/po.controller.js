@@ -1,5 +1,5 @@
-import * as poService from './po.service.js';
-import { BadRequestError, ForbiddenError } from '../../utils/httpErrors.js';
+import * as poService from "./po.service.js";
+import { BadRequestError, ForbiddenError } from "../../utils/httpErrors.js";
 
 export async function getPosAdmin(req, res, next) {
   try {
@@ -12,6 +12,30 @@ export async function getPosAdmin(req, res, next) {
 
     const pos = await poService.getAllPos(filters);
     res.json(pos);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function importPosFromCsv(req, res, next) {
+  try {
+    const { csv_text } = req.body;
+    const result = await poService.importPosFromCsv(csv_text, req.user);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function importPoLineItemsFromCsv(req, res, next) {
+  try {
+    const { csv_text } = req.body;
+    const result = await poService.importPoLineItemsFromCsv(
+      req.params.poId,
+      csv_text,
+      req.user,
+    );
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -35,17 +59,25 @@ export async function getPosVendor(req, res, next) {
 export async function getPoById(req, res, next) {
   try {
     const po = await poService.getPoById(req.params.id);
-    
+
     // Check vendor authorization if this is a vendor request
-    if (req.user && req.user.role === 'VENDOR') {
+    if (req.user && req.user.role === "VENDOR") {
       if (!po.vendor_id) {
-        return next(new BadRequestError('This purchase order is not associated with a vendor'));
+        return next(
+          new BadRequestError(
+            "This purchase order is not associated with a vendor",
+          ),
+        );
       }
       if (String(po.vendor_id).trim() !== String(req.user.vendor_id).trim()) {
-        return next(new ForbiddenError('You do not have permission to view this purchase order'));
+        return next(
+          new ForbiddenError(
+            "You do not have permission to view this purchase order",
+          ),
+        );
       }
     }
-    
+
     res.json(po);
   } catch (error) {
     next(error);
@@ -55,7 +87,11 @@ export async function getPoById(req, res, next) {
 export async function updatePoPriority(req, res, next) {
   try {
     const { priority } = req.body;
-    const po = await poService.updatePoPriority(req.params.id, priority, req.user);
+    const po = await poService.updatePoPriority(
+      req.params.id,
+      priority,
+      req.user,
+    );
     res.json(po);
   } catch (error) {
     next(error);
@@ -89,7 +125,7 @@ export async function updateLineItemExpectedDate(req, res, next) {
       req.params.poId,
       req.params.lineItemId,
       expected_delivery_date,
-      req.user
+      req.user,
     );
     res.json(lineItem);
   } catch (error) {
@@ -104,7 +140,7 @@ export async function updateLineItemStatus(req, res, next) {
       req.params.poId,
       req.params.lineItemId,
       status,
-      req.user
+      req.user,
     );
     res.json(lineItem);
   } catch (error) {
@@ -115,10 +151,14 @@ export async function updateLineItemStatus(req, res, next) {
 export async function updatePoClosure(req, res, next) {
   try {
     const { closure_status, closed_amount } = req.body;
-    const po = await poService.updatePoClosure(req.params.id, {
-      closure_status,
-      closed_amount
-    }, req.user);
+    const po = await poService.updatePoClosure(
+      req.params.id,
+      {
+        closure_status,
+        closed_amount,
+      },
+      req.user,
+    );
     res.json(po);
   } catch (error) {
     next(error);
@@ -137,7 +177,7 @@ export async function getPoHistory(req, res, next) {
 export async function getAllHistory(req, res, next) {
   try {
     const filters = {};
-    if (req.user.role === 'VENDOR') {
+    if (req.user.role === "VENDOR") {
       filters.vendor_id = req.user.vendor_id;
     }
     const history = await poService.getAllHistory(filters);
@@ -154,7 +194,7 @@ export async function updateLineItemPriority(req, res, next) {
       req.params.poId,
       req.params.lineItemId,
       priority,
-      req.user
+      req.user,
     );
     res.json(lineItem);
   } catch (error) {

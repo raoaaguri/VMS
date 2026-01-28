@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { api } from '../../config/api';
-import { Package, Filter, Eye, AlertCircle, Clock, CheckCircle, TrendingUp } from 'lucide-react';
+import { Toast, useToast } from '../../components/Toast';
+import { Package, Filter, Eye, AlertCircle, Clock, CheckCircle, TrendingUp, Upload } from 'lucide-react';
 import { useSortableTable } from '../../hooks/useSortableTable';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
-const STATUSES = ['CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED'];
+// const STATUSES = ['CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED'];
+const STATUSES = ['Cancelled', 'Fully Purchased', 'Pending', 'Partially Purchased', 'Writeoff done'];
 
 const priorityColors = {
   LOW: 'bg-gray-100 text-gray-800',
@@ -23,9 +25,12 @@ const statusColors = {
 };
 
 export function AdminDashboard() {
+  const { toast, showSuccess, showError } = useToast();
+
   const [pos, setPos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -34,6 +39,8 @@ export function AdminDashboard() {
   const [availableTypes, setAvailableTypes] = useState([]);
   const [stats, setStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
+
+  const csvFileInputRef = useRef(null);
 
   const navigate = useNavigate();
   const { sortedData, requestSort, getSortIcon } = useSortableTable(pos);
@@ -91,6 +98,45 @@ export function AdminDashboard() {
     }
   };
 
+  const handleImportCsvClick = () => {
+    if (csvFileInputRef.current) {
+      csvFileInputRef.current.click();
+    }
+  };
+
+  const handleCsvFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      showError('Please select a CSV file');
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      const csvText = await file.text();
+      const result = await api.admin.importPosFromCsv(csvText);
+      await loadPos();
+      await loadStats();
+
+      if ((result?.failed_count || 0) > 0) {
+        showError(
+          `Imported ${result.inserted_count || 0} PO(s), ${result.failed_count || 0} failed`,
+          4000,
+        );
+      } else {
+        showSuccess(`Imported ${result?.inserted_count || 0} PO(s) successfully!`);
+      }
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   return (
     <Layout role="admin">
       <div className="space-y-6">
@@ -102,7 +148,28 @@ export function AdminDashboard() {
               <p className="text-gray-500 text-sm">Monitor purchase orders and performance</p>
             </div>
           </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleImportCsvClick}
+              disabled={isImporting}
+              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-60"
+            >
+              <Upload className="w-4 h-4" />
+              <span>{isImporting ? 'Importing...' : 'Import CSV'}</span>
+            </button>
+          </div>
         </div>
+
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => { }} />}
+
+        <input
+          ref={csvFileInputRef}
+          type="file"
+          accept=".csv,text/csv"
+          className="hidden"
+          onChange={handleCsvFileSelected}
+        />
 
         {!loadingStats && stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

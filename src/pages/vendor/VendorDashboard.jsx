@@ -5,7 +5,8 @@ import { api } from '../../config/api';
 import { Package, Filter, Eye, CheckCircle, AlertCircle } from 'lucide-react';
 import { useSortableTable } from '../../hooks/useSortableTable';
 
-const STATUSES = ['CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED'];
+const STATUSES = ['Cancelled', 'Fully Purchased', 'Pending', 'Partially Purchased', 'Writeoff done'];
+
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 
 const priorityColors = {

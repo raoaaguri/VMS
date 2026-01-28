@@ -3,7 +3,7 @@
  * Dynamically determines the API base URL based on environment
  */
 
-import { logger } from '../utils/logger';
+import { logger } from "../utils/logger";
 
 // Get the API base URL from environment variables or determine dynamically
 const getApiBaseUrl = () => {
@@ -29,7 +29,10 @@ const getApiBaseUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
-logger.info('API Configuration Loaded', { API_BASE_URL, isDev: import.meta.env.DEV });
+logger.info("API Configuration Loaded", {
+  API_BASE_URL,
+  isDev: import.meta.env.DEV,
+});
 
 export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem("token");
@@ -54,10 +57,10 @@ export async function apiRequest(endpoint, options = {}) {
 
   try {
     logger.debug(`[${requestId}] API Request Started`, {
-      method: options.method || 'GET',
+      method: options.method || "GET",
       endpoint,
       fullUrl,
-      hasToken: !!token
+      hasToken: !!token,
     });
 
     const response = await fetch(fullUrl, config);
@@ -65,16 +68,17 @@ export async function apiRequest(endpoint, options = {}) {
 
     logger.debug(`[${requestId}] API Response Received`, {
       status: response.status,
-      duration: `${duration}ms`
+      duration: `${duration}ms`,
     });
 
     if (!response.ok) {
-      let errorMessage = 'Request failed';
+      let errorMessage = "Request failed";
       let errorData = null;
 
       try {
         errorData = await response.json();
-        errorMessage = errorData.error?.message || errorData.message || errorMessage;
+        errorMessage =
+          errorData.error?.message || errorData.message || errorMessage;
       } catch (e) {
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
@@ -88,22 +92,24 @@ export async function apiRequest(endpoint, options = {}) {
           endpoint,
           fullUrl,
           errorData,
-          duration: `${duration}ms`
-        }
+          duration: `${duration}ms`,
+        },
       );
 
       throw new Error(errorMessage);
     }
 
     if (response.status === 204) {
-      logger.debug(`[${requestId}] API Request Completed (No Content)`, { duration: `${duration}ms` });
+      logger.debug(`[${requestId}] API Request Completed (No Content)`, {
+        duration: `${duration}ms`,
+      });
       return null;
     }
 
     const data = await response.json();
     logger.debug(`[${requestId}] API Request Completed Successfully`, {
       duration: `${duration}ms`,
-      hasData: !!data
+      hasData: !!data,
     });
 
     return data;
@@ -118,23 +124,22 @@ export async function apiRequest(endpoint, options = {}) {
         {
           endpoint,
           fullUrl,
-          errorType: 'NetworkError',
+          errorType: "NetworkError",
           duration: `${duration}ms`,
-          possibleCause: 'Backend server is not responding or not accessible from this URL'
-        }
+          possibleCause:
+            "Backend server is not responding or not accessible from this URL",
+        },
       );
-      throw new Error(`Unable to connect to server: ${API_BASE_URL}. Please check if the backend is running.`);
+      throw new Error(
+        `Unable to connect to server: ${API_BASE_URL}. Please check if the backend is running.`,
+      );
     }
 
-    logger.error(
-      `[${requestId}] API Request Error`,
-      error,
-      {
-        endpoint,
-        fullUrl,
-        duration: `${duration}ms`
-      }
-    );
+    logger.error(`[${requestId}] API Request Error`, error, {
+      endpoint,
+      fullUrl,
+      duration: `${duration}ms`,
+    });
 
     throw error;
   }
@@ -156,6 +161,11 @@ export const api = {
       const query = new URLSearchParams(params).toString();
       return apiRequest(`/api/v1/admin/pos${query ? `?${query}` : ""}`);
     },
+    importPosFromCsv: (csvText) =>
+      apiRequest("/api/v1/admin/pos/import", {
+        method: "POST",
+        body: JSON.stringify({ csv_text: csvText }),
+      }),
     getPoById: (id) => apiRequest(`/api/v1/admin/pos/${id}`),
     getPoHistory: (id) => apiRequest(`/api/v1/admin/pos/${id}/history`),
     updatePoPriority: (id, priority) =>
@@ -174,8 +184,13 @@ export const api = {
         {
           method: "PUT",
           body: JSON.stringify({ priority }),
-        }
+        },
       ),
+    importPoLineItemsFromCsv: (poId, csvText) =>
+      apiRequest(`/api/v1/admin/pos/${poId}/line-items/import`, {
+        method: "POST",
+        body: JSON.stringify({ csv_text: csvText }),
+      }),
     getLineItems: (params) => {
       const query = new URLSearchParams(params).toString();
       return apiRequest(`/api/v1/admin/line-items${query ? `?${query}` : ""}`);
@@ -234,7 +249,7 @@ export const api = {
         {
           method: "PUT",
           body: JSON.stringify({ expected_delivery_date: date }),
-        }
+        },
       ),
     updateLineItemStatus: (poId, lineItemId, status) =>
       apiRequest(`/api/v1/vendor/pos/${poId}/line-items/${lineItemId}/status`, {

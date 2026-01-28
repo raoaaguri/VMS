@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { Toast, useToast } from '../../components/Toast';
 import { Loader } from '../../components/Loader';
 import { api } from '../../config/api';
-import { ArrowLeft, Package, Building, Calendar, AlertCircle, History, X, Filter } from 'lucide-react';
+import { ArrowLeft, Package, Building, Calendar, AlertCircle, History, X, Filter, Upload } from 'lucide-react';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 
@@ -27,6 +27,8 @@ export function AdminPoDetail() {
   const navigate = useNavigate();
   const { toast, showSuccess, showError } = useToast();
 
+  const csvFileInputRef = useRef(null);
+
   const [po, setPo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -42,6 +44,44 @@ export function AdminPoDetail() {
   useEffect(() => {
     loadPo();
   }, [id]);
+
+  const handleImportCsvClick = () => {
+    if (csvFileInputRef.current) {
+      csvFileInputRef.current.click();
+    }
+  };
+
+  const handleCsvFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      showError('Please select a CSV file');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      const csvText = await file.text();
+      const result = await api.admin.importPoLineItemsFromCsv(id, csvText);
+      await loadPo();
+
+      if ((result?.failed_count || 0) > 0) {
+        showError(
+          `Imported ${result.inserted_count || 0} row(s), ${result.failed_count || 0} failed`,
+          4000,
+        );
+      } else {
+        showSuccess(`Imported ${result?.inserted_count || 0} line item(s) successfully!`);
+      }
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const loadPo = async () => {
     try {
@@ -336,10 +376,11 @@ export function AdminPoDetail() {
                 className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
               >
                 <option value="ALL">All Statuses</option>
-                <option value="CREATED">Created</option>
-                <option value="ACCEPTED">Accepted</option>
-                <option value="PLANNED">Planned</option>
-                <option value="DELIVERED">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="Fully Purchased">Fully Purchased</option>
+                <option value="Pending">Pending</option>
+                <option value="Partially Purchased">Partially Purchased</option>
+                <option value="Writeoff done">Writeoff done</option>
               </select>
 
               <select
@@ -355,10 +396,27 @@ export function AdminPoDetail() {
               </select>
             </div>
 
-            <button onClick={() => {
-              setLineItemFilters({ status: 'ALL', priority: 'ALL' });
-            }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleImportCsvClick}
+                className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Import CSV</span>
+              </button>
+              <button onClick={() => {
+                setLineItemFilters({ status: 'ALL', priority: 'ALL' });
+              }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
+            </div>
           </div>
+
+          <input
+            ref={csvFileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={handleCsvFileSelected}
+          />
 
           <div className="overflow-x-auto">
             <table className="w-full">

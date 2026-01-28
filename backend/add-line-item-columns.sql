@@ -20,3 +20,5 @@ ADD COLUMN IF NOT EXISTS HSN_SAC_CODE text,
 ADD COLUMN IF NOT EXISTS Order_Amount numeric
 ADD COLUMN IF NOT EXISTS received_qty numeric DEFAULT 0;
 
+
+
