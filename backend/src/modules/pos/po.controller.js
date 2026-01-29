@@ -23,6 +23,7 @@ export async function importPosFromCsv(req, res, next) {
     const result = await poService.importPosFromCsv(csv_text, req.user);
     res.json(result);
   } catch (error) {
+    console.error("[importPosFromCsv] Unexpected error:", error);
     next(error);
   }
 }
