@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { api } from '../../config/api';
 import { Toast, useToast } from '../../components/Toast';
-import { Package, Filter, Eye, AlertCircle, Clock, CheckCircle, TrendingUp, Upload } from 'lucide-react';
 import { useSortableTable } from '../../hooks/useSortableTable';
+import { Package, Filter, Eye, AlertCircle, Clock, CheckCircle, TrendingUp } from 'lucide-react';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 // const STATUSES = ['CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED'];
@@ -28,9 +28,11 @@ export function AdminDashboard() {
   const { toast, showSuccess, showError } = useToast();
 
   const [pos, setPos] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isImporting, setIsImporting] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -39,17 +41,35 @@ export function AdminDashboard() {
   const [availableTypes, setAvailableTypes] = useState([]);
   const [stats, setStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [vendorSearchTerm, setVendorSearchTerm] = useState('');
+  const [showVendorDropdown, setShowVendorDropdown] = useState(false);
+  const vendorDropdownRef = useRef(null);
 
-  const csvFileInputRef = useRef(null);
 
   const navigate = useNavigate();
-  const { sortedData, requestSort, getSortIcon } = useSortableTable(pos);
 
   useEffect(() => {
     loadPos();
     loadStats();
     loadVendors();
-  }, [statusFilter, priorityFilter, typeFilter, vendorFilter]);
+  }, [statusFilter, priorityFilter, typeFilter, vendorFilter, page, pageSize]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target)) {
+        setShowVendorDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, priorityFilter, typeFilter, vendorFilter, pageSize]);
 
   useEffect(() => {
     // Extract types from the loaded PO data
@@ -58,6 +78,60 @@ export function AdminDashboard() {
       setAvailableTypes(types.sort());
     }
   }, [pos]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const getVisiblePageNumbers = () => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+
+    let start = Math.max(1, page - 2);
+    let end = Math.min(totalPages, start + 4);
+
+    if (end - start < 4) {
+      start = Math.max(1, end - 4);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  };
+
+  const updateFilters = (nextFilters) => {
+    setPage(1);
+    setStatusFilter(nextFilters.status);
+    setPriorityFilter(nextFilters.priority);
+    setTypeFilter(nextFilters.type);
+    setVendorFilter(nextFilters.vendor_id);
+  };
+
+  const getFilteredVendors = () => {
+    if (!vendorSearchTerm) return vendors;
+    return vendors.filter(vendor =>
+      vendor.name.toLowerCase().includes(vendorSearchTerm.toLowerCase())
+    );
+  };
+
+  const handleVendorSelect = (vendorId, vendorName) => {
+    setVendorFilter(vendorId);
+    setVendorSearchTerm(vendorName);
+    setShowVendorDropdown(false);
+    updateFilters({
+      status: statusFilter,
+      priority: priorityFilter,
+      type: typeFilter,
+      vendor_id: vendorId
+    });
+  };
+
+  const handleVendorInputClick = () => {
+    setShowVendorDropdown(true);
+    if (vendorFilter) {
+      setVendorSearchTerm('');
+    }
+  };
+
+  const handleVendorInputChange = (e) => {
+    setVendorSearchTerm(e.target.value);
+    setShowVendorDropdown(true);
+  };
 
   const loadPos = async () => {
     try {
@@ -68,8 +142,30 @@ export function AdminDashboard() {
       if (typeFilter) params.type = typeFilter;
       if (vendorFilter) params.vendor_id = vendorFilter;
 
+      // Add pagination parameters
+      params.page = page;
+      params.limit = pageSize;
+
       const data = await api.admin.getPos(params);
-      setPos(data);
+      // Handle both paginated and non-paginated response formats
+      if (data && typeof data === 'object') {
+        if (data.items && Array.isArray(data.items)) {
+          // Paginated response
+          setPos(data.items);
+          setTotal(data.total || data.items.length);
+        } else if (Array.isArray(data)) {
+          // Direct array response
+          setPos(data);
+          setTotal(data.length);
+        } else {
+          // Fallback
+          setPos([]);
+          setTotal(0);
+        }
+      } else {
+        setPos([]);
+        setTotal(0);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -98,44 +194,6 @@ export function AdminDashboard() {
     }
   };
 
-  const handleImportCsvClick = () => {
-    if (csvFileInputRef.current) {
-      csvFileInputRef.current.click();
-    }
-  };
-
-  const handleCsvFileSelected = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-
-    if (!file) return;
-
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      showError('Please select a CSV file');
-      return;
-    }
-
-    try {
-      setIsImporting(true);
-      const csvText = await file.text();
-      const result = await api.admin.importPosFromCsv(csvText);
-      await loadPos();
-      await loadStats();
-
-      if ((result?.failed_count || 0) > 0) {
-        showError(
-          `Imported ${result.inserted_count || 0} PO(s), ${result.failed_count || 0} failed`,
-          4000,
-        );
-      } else {
-        showSuccess(`Imported ${result?.inserted_count || 0} PO(s) successfully!`);
-      }
-    } catch (err) {
-      showError(err.message);
-    } finally {
-      setIsImporting(false);
-    }
-  };
 
   return (
     <Layout role="admin">
@@ -149,27 +207,10 @@ export function AdminDashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleImportCsvClick}
-              disabled={isImporting}
-              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-60"
-            >
-              <Upload className="w-4 h-4" />
-              <span>{isImporting ? 'Importing...' : 'Import CSV'}</span>
-            </button>
-          </div>
         </div>
 
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => { }} />}
 
-        <input
-          ref={csvFileInputRef}
-          type="file"
-          accept=".csv,text/csv"
-          className="hidden"
-          onChange={handleCsvFileSelected}
-        />
 
         {!loadingStats && stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -251,8 +292,8 @@ export function AdminDashboard() {
               <Filter className="w-5 h-5 text-gray-400" />
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={(e) => updateFilters({ ...{ status: e.target.value, priority: priorityFilter, type: typeFilter, vendor_id: vendorFilter } })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
               >
                 <option value="">All Statuses</option>
                 {STATUSES.map(status => (
@@ -261,8 +302,8 @@ export function AdminDashboard() {
               </select>
               <select
                 value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={(e) => updateFilters({ ...{ status: statusFilter, priority: e.target.value, type: typeFilter, vendor_id: vendorFilter } })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
               >
                 <option value="">All Priorities</option>
                 {PRIORITIES.map(priority => (
@@ -271,29 +312,48 @@ export function AdminDashboard() {
               </select>
               <select
                 value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={(e) => updateFilters({ ...{ status: statusFilter, priority: priorityFilter, type: e.target.value, vendor_id: vendorFilter } })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
               >
                 <option value="">All Types</option>
-                {availableTypes.map(type => (
-                  <option key={type} value={type}>{type.replace('_', ' ')}</option>
-                ))}
+                <option value="NEW_ITEMS">New Items</option>
+                <option value="REPEAT">Repeat</option>
               </select>
-              <select
-                value={vendorFilter}
-                onChange={(e) => setVendorFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Vendors</option>
-                {vendors.map(vendor => (
-                  <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
-                ))}
-              </select>
+              <div className="relative" ref={vendorDropdownRef}>
+                <input
+                  type="text"
+                  placeholder="Search vendors..."
+                  value={vendorSearchTerm}
+                  onChange={handleVendorInputChange}
+                  onClick={handleVendorInputClick}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300 w-48"
+                />
+                {showVendorDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <div className="px-3 py-2 text-sm text-gray-500 border-b border-gray-200">
+                      {vendorSearchTerm ? `Search results for "${vendorSearchTerm}"` : 'All Vendors'}
+                    </div>
+                    {getFilteredVendors().length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-gray-500">No vendors found</div>
+                    ) : (
+                      getFilteredVendors().map(vendor => (
+                        <div
+                          key={vendor.id}
+                          onClick={() => handleVendorSelect(vendor.id, vendor.name)}
+                          className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+                        >
+                          {vendor.name}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <button onClick={() => {
-              setStatusFilter('');
-              setPriorityFilter('');
-              setTypeFilter('');
+              updateFilters({ status: '', priority: '', type: '', vendor_id: '' });
+              setVendorSearchTerm('');
+              setShowVendorDropdown(false);
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
         </div>
@@ -314,38 +374,23 @@ export function AdminDashboard() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('po_number')}
-                    >
-                      PO Number {getSortIcon('po_number')}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      PO Number
                     </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('po_date')}
-                    >
-                      PO Date {getSortIcon('po_date')}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      PO Date
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Vendor
                     </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('type')}
-                    >
-                      Type {getSortIcon('type')}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
                     </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('priority')}
-                    >
-                      Priority {getSortIcon('priority')}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Priority
                     </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('status')}
-                    >
-                      Status {getSortIcon('status')}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Line Items
@@ -356,14 +401,14 @@ export function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedData.length === 0 ? (
+                  {pos.length === 0 ? (
                     <tr>
                       <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
                         No purchase orders found
                       </td>
                     </tr>
                   ) : (
-                    sortedData.map(po => (
+                    pos.map(po => (
                       <tr key={po.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {po.po_number}
@@ -408,6 +453,61 @@ export function AdminDashboard() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {!loading && pos.length > 0 && (
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-gray-600">
+              Showing {total === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Rows per page</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPage(1);
+                    setPageSize(parseInt(e.target.value, 10));
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={75}>75</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className={`px-3 py-2 text-sm rounded-md border ${page <= 1 ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  Prev
+                </button>
+                {getVisiblePageNumbers().map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPage(p)}
+                    className={`px-3 py-2 text-sm rounded-md border ${p === page ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className={`px-3 py-2 text-sm rounded-md border ${page >= totalPages ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         )}

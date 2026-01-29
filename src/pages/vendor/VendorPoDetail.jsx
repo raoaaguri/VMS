@@ -37,11 +37,17 @@ export function VendorPoDetail() {
   const [showHistory, setShowHistory] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [lineItemFilters, setLineItemFilters] = useState({ status: 'ALL', priority: 'ALL' });
+  const [lineItemPage, setLineItemPage] = useState(1);
+  const [lineItemPageSize, setLineItemPageSize] = useState(10);
   const [updatingItemId, setUpdatingItemId] = useState(null);
 
   useEffect(() => {
     loadPo();
   }, [id]);
+
+  useEffect(() => {
+    setLineItemPage(1);
+  }, [lineItemFilters, lineItemPageSize]);
 
   const loadPo = async () => {
     try {
@@ -108,12 +114,21 @@ export function VendorPoDetail() {
       setIsProcessing(true);
       setUpdatingItemId(lineItemId);
       await api.vendor.updateLineItemExpectedDate(id, lineItemId, date);
-      setPo({
-        ...po,
-        line_items: po.line_items.map(item =>
+
+      // Update local state immediately to show the change
+      setPo(prevPo => ({
+        ...prevPo,
+        line_items: prevPo.line_items.map(item =>
           item.id === lineItemId ? { ...item, expected_delivery_date: date } : item
         )
-      });
+      }));
+
+      // Also update acceptDates if it exists
+      setAcceptDates(prevDates => ({
+        ...prevDates,
+        [lineItemId]: date
+      }));
+
       setError('');
       showSuccess('Expected delivery date updated successfully!');
     } catch (err) {
@@ -127,7 +142,9 @@ export function VendorPoDetail() {
 
   const handleDateChange = async (lineItemId, newDate, currentDate) => {
     // Only make API call if the new date is different from the current date
-    if (newDate && newDate !== currentDate) {
+    // Use acceptDates as the source of truth for current date
+    const currentStoredDate = acceptDates[lineItemId] || currentDate;
+    if (newDate && newDate !== currentStoredDate) {
       await handleUpdateExpectedDate(lineItemId, newDate);
     }
   };
@@ -151,6 +168,25 @@ export function VendorPoDetail() {
     if (lineItemFilters.priority !== 'ALL' && item.line_priority !== lineItemFilters.priority) return false;
     return true;
   });
+
+  const totalLineItems = filteredLineItems.length;
+  const totalPagesLineItems = Math.max(1, Math.ceil(totalLineItems / lineItemPageSize));
+  const startIndex = (lineItemPage - 1) * lineItemPageSize;
+  const endIndex = startIndex + lineItemPageSize;
+  const paginatedLineItems = filteredLineItems.slice(startIndex, endIndex);
+
+  const getVisiblePageNumbersLineItems = () => {
+    if (totalPagesLineItems <= 5) return Array.from({ length: totalPagesLineItems }, (_, i) => i + 1);
+
+    let start = Math.max(1, lineItemPage - 2);
+    let end = Math.min(totalPagesLineItems, start + 4);
+
+    if (end - start < 4) {
+      start = Math.max(1, end - 4);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  };
 
   if (loading) {
     return (
@@ -202,10 +238,8 @@ export function VendorPoDetail() {
                 <History className="w-4 h-4" />
                 <span>{loadingHistory ? 'Loading...' : 'View History'}</span>
               </button>
-
-              <span className={`px-3 py-1 text-sm font-medium rounded-full ${statusColors[po.status]}`}>
-                {po.status}
-              </span>
+              <button className='bg-blue-500 px-4 py-2 text-white rounded-lg hover:bg-blue-600'>Export PO</button>
+              <button className='bg-green-500 px-4 py-2 text-white rounded-lg hover:bg-green-600'>Accept</button>
 
               {po.status === 'CREATED' && (
                 <button
@@ -233,24 +267,34 @@ export function VendorPoDetail() {
               <span>Order Information</span>
             </h2>
 
-            <div className="space-y-3">
-              <div className='flex items-center gap-x-3'>
-                <label className="text-sm text-gray-500">PO Date :</label>
-                <p className="text-gray-900 font-medium">
-                  {new Date(po.po_date).toLocaleDateString()}
-                </p>
-              </div>
+            <div className="grid grid-cols-2 gap-x-2">
+              <div className="space-y-3">
+                <div className='flex items-center gap-x-3'>
+                  <label className="text-sm text-gray-500">PO Date :</label>
+                  <p className="text-gray-900 font-medium text-sm">
+                    {new Date(po.po_date).toLocaleDateString()}
+                  </p>
+                </div>
 
-              <div className='flex items-center gap-x-3'>
-                <label className="text-sm text-gray-500">Type :</label>
-                <p className="text-gray-900 font-medium">{po.type.replace('_', ' ')}</p>
-              </div>
+                <div className='flex items-center gap-x-3'>
+                  <label className="text-sm text-gray-500">Type :</label>
+                  <p className="text-gray-900 font-medium text-sm">{po.type.replace('_', ' ')}</p>
+                </div>
 
-              <div className='flex items-center gap-x-3'>
-                <label className="text-sm text-gray-500">Priority :</label>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[po.priority]}`}>
-                  {po.priority}
-                </span>
+                <div className='flex items-center gap-x-3'>
+                  <label className="text-sm text-gray-500">Priority :</label>
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[po.priority]}`}>
+                    {po.priority}
+                  </span>
+                </div>
+              </div>
+              <div className="">
+                <div className='flex items-center gap-x-3'>
+                  <label className="text-sm text-gray-500">Status :</label>
+                  <span className={`px-3 py-1 text-sm font-medium rounded-full bg-yellow-300 ${statusColors[po.status]}`}>
+                    {po.status}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -265,19 +309,19 @@ export function VendorPoDetail() {
               <div className='flex items-center gap-x-3'
               >
                 <label className="text-sm text-gray-500">Vendor Name :</label>
-                <p className="text-gray-900 font-medium">{po.vendor?.name}</p>
+                <p className="text-gray-900 font-medium text-sm">{po.vendor?.name}</p>
               </div>
 
               <div className='flex items-center gap-x-3'
               >
                 <label className="text-sm text-gray-500">Contact Person :</label>
-                <p className="text-gray-900 font-medium">{po.vendor?.contact_person}</p>
+                <p className="text-gray-900 font-medium text-sm">{po.vendor?.contact_person}</p>
               </div>
 
               <div className='flex items-center gap-x-3'
               >
                 <label className="text-sm text-gray-500">Contact Email :</label>
-                <p className="text-gray-900 font-medium">{po.vendor?.contact_email}</p>
+                <p className="text-gray-900 font-medium text-sm">{po.vendor?.contact_email}</p>
               </div>
             </div>
           </div>
@@ -303,7 +347,7 @@ export function VendorPoDetail() {
               <select
                 value={lineItemFilters.status}
                 onChange={(e) => setLineItemFilters({ ...lineItemFilters, status: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
               >
                 <option value="ALL">All Statuses</option>
                 <option value="CREATED">Created</option>
@@ -314,7 +358,7 @@ export function VendorPoDetail() {
               <select
                 value={lineItemFilters.priority}
                 onChange={(e) => setLineItemFilters({ ...lineItemFilters, priority: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
               >
                 <option value="ALL">All Priorities</option>
                 <option value="LOW">Low</option>
@@ -328,7 +372,7 @@ export function VendorPoDetail() {
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-scroll">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -345,15 +389,25 @@ export function VendorPoDetail() {
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Weight</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Received Qty</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending Qty</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">GST%</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">MRP</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expected Date</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredLineItems.map(item => (
+                {paginatedLineItems.length === 0 && (
+                  <tr>
+                    <td colSpan="19" className="px-4 py-8 text-center text-gray-500">
+                      No line items match the selected filters
+                    </td>
+                  </tr>
+                )}
+                {paginatedLineItems.map(item => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-900">{item.design_code || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{item.combination_code || '-'}</td>
@@ -368,6 +422,7 @@ export function VendorPoDetail() {
                     <td className="px-4 py-3 text-sm text-gray-500 text-right">{item.weight || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.quantity}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.received_qty || 0}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{(item.quantity || 0) - (item.received_qty || 0)}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.gst_percent}%</td>
                     <td className="px-4 py-3 text-sm text-gray-500 text-right">{item.price}</td>
                     <td className="px-4 py-3 text-sm text-gray-500 text-right">{item.mrp}</td>
@@ -376,10 +431,21 @@ export function VendorPoDetail() {
                         <div className="flex items-center gap-2">
                           <input
                             type="date"
-                            value={item.expected_delivery_date || ''}
-                            onChange={(e) => handleDateChange(item.id, e.target.value, item.expected_delivery_date || '')}
+                            value={acceptDates[item.id] || item.expected_delivery_date || ''}
+                            onChange={(e) => {
+                              const newDate = e.target.value;
+                              // Update acceptDates immediately for responsive UI
+                              setAcceptDates(prev => ({
+                                ...prev,
+                                [item.id]: newDate
+                              }));
+                              // Only call API if date is different from current
+                              if (newDate && newDate !== (item.expected_delivery_date || '')) {
+                                handleDateChange(item.id, newDate, item.expected_delivery_date || '');
+                              }
+                            }}
                             disabled={item.status === 'DELIVERED'}
-                            className="px-2 py-1 border border-gray-300 rounded text-sm"
+                            className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-300"
                           />
                           {updatingItemId === item.id && (
                             <span className="text-blue-500 text-xs whitespace-nowrap">Updating...</span>
@@ -387,8 +453,8 @@ export function VendorPoDetail() {
                         </div>
                       ) : (
                         <span className="text-gray-500">
-                          {item.expected_delivery_date
-                            ? new Date(item.expected_delivery_date).toLocaleDateString()
+                          {acceptDates[item.id] || item.expected_delivery_date
+                            ? new Date(acceptDates[item.id] || item.expected_delivery_date).toLocaleDateString()
                             : '-'}
                         </span>
                       )}
@@ -398,10 +464,73 @@ export function VendorPoDetail() {
                         {item.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[item.line_priority]}`}>
+                        {item.line_priority}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <button className="bg-green-500 text-white px-3 py-1 rounded text-xs hover:bg-green-600">
+                        Accept
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
+            <div className="text-sm text-gray-600">
+              Showing {totalLineItems === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, totalLineItems)} of {totalLineItems} line items
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Rows per page</span>
+                <select
+                  value={lineItemPageSize}
+                  onChange={(e) => {
+                    setLineItemPage(1);
+                    setLineItemPageSize(parseInt(e.target.value, 10));
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={75}>75</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setLineItemPage((p) => Math.max(1, p - 1))}
+                  disabled={lineItemPage <= 1}
+                  className={`px-3 py-2 text-sm rounded-md border ${lineItemPage <= 1 ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  Prev
+                </button>
+                {getVisiblePageNumbersLineItems().map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setLineItemPage(p)}
+                    className={`px-3 py-2 text-sm rounded-md border ${p === lineItemPage ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setLineItemPage((p) => Math.min(totalPagesLineItems, p + 1))}
+                  disabled={lineItemPage >= totalPagesLineItems}
+                  className={`px-3 py-2 text-sm rounded-md border ${lineItemPage >= totalPagesLineItems ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
 
           {showAcceptForm && (

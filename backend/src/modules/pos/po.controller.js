@@ -10,7 +10,12 @@ export async function getPosAdmin(req, res, next) {
     if (req.query.priority) filters.priority = req.query.priority;
     if (req.query.type) filters.type = req.query.type;
 
-    const pos = await poService.getAllPos(filters);
+    // Add pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const pos = await poService.getAllPos(filters, limit, offset);
     res.json(pos);
   } catch (error) {
     next(error);
@@ -50,7 +55,12 @@ export async function getPosVendor(req, res, next) {
     if (req.query.priority) filters.priority = req.query.priority;
     if (req.query.type) filters.type = req.query.type;
 
-    const pos = await poService.getAllPos(filters);
+    // Add pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const pos = await poService.getAllPos(filters, limit, offset);
     res.json(pos);
   } catch (error) {
     next(error);
@@ -181,7 +191,13 @@ export async function getAllHistory(req, res, next) {
     if (req.user.role === "VENDOR") {
       filters.vendor_id = req.user.vendor_id;
     }
-    const history = await poService.getAllHistory(filters);
+
+    // Add pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const history = await poService.getAllHistory(filters, limit, offset);
     res.json(history);
   } catch (error) {
     next(error);

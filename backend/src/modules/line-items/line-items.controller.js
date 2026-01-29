@@ -2,7 +2,7 @@ import { query } from "../../config/db.js";
 
 export async function getAdminLineItems(req, res, next) {
   try {
-    const { status, priority, vendor_id, page = 1, limit = 50 } = req.query;
+    const { status, priority, vendor_id, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
     const params = [];

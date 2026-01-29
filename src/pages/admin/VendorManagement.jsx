@@ -16,12 +16,18 @@ export function VendorManagement() {
   const [expandedActionsId, setExpandedActionsId] = useState(null);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvalModalData, setApprovalModalData] = useState({ vendor: null, action: null });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     loadVendors();
   }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filterStatus, pageSize]);
 
   // Clear success message after 3 seconds
   useEffect(() => {
@@ -30,6 +36,34 @@ export function VendorManagement() {
       return () => clearTimeout(timer);
     }
   }, [success]);
+
+  // Filter vendors based on selected status
+  const filteredVendors = vendors.filter(vendor => {
+    if (filterStatus === 'all') return true;
+    if (filterStatus === 'pending') return vendor.status === 'PENDING_APPROVAL';
+    if (filterStatus === 'active') return vendor.status === 'ACTIVE' && vendor.is_active === true;
+    if (filterStatus === 'inactive') return vendor.is_active === false;
+    if (filterStatus === 'rejected') return vendor.status === 'REJECTED';
+    return true;
+  });
+
+  // Pagination logic
+  const totalPages = Math.max(1, Math.ceil(filteredVendors.length / pageSize));
+
+  const getVisiblePageNumbers = () => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+
+    let start = Math.max(1, page - 2);
+    let end = Math.min(totalPages, start + 4);
+
+    if (end - start < 4) {
+      start = Math.max(1, end - 4);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  };
+
+  const paginatedVendors = filteredVendors.slice((page - 1) * pageSize, page * pageSize);
 
   const loadVendors = async () => {
     try {
@@ -43,16 +77,6 @@ export function VendorManagement() {
       setLoading(false);
     }
   };
-
-  // Filter vendors based on selected status
-  const filteredVendors = vendors.filter(vendor => {
-    if (filterStatus === 'all') return true;
-    if (filterStatus === 'pending') return vendor.status === 'PENDING_APPROVAL';
-    if (filterStatus === 'active') return vendor.status === 'ACTIVE';
-    if (filterStatus === 'inactive') return vendor.is_active === false;
-    if (filterStatus === 'rejected') return vendor.status === 'REJECTED';
-    return true;
-  });
 
   const handleSubmitVendor = async (e) => {
     e.preventDefault();
@@ -219,7 +243,7 @@ export function VendorManagement() {
             {[
               { value: 'all', label: 'All Vendors', count: vendors.length },
               { value: 'pending', label: 'Pending', count: vendors.filter(v => v.status === 'PENDING_APPROVAL').length },
-              { value: 'active', label: 'Active', count: vendors.filter(v => v.status === 'ACTIVE').length },
+              { value: 'active', label: 'Active', count: vendors.filter(v => v.status === 'ACTIVE' && v.is_active === true).length },
               { value: 'inactive', label: 'Inactive', count: vendors.filter(v => !v.is_active).length },
               { value: 'rejected', label: 'Rejected', count: vendors.filter(v => v.status === 'REJECTED').length }
             ].map(tab => (
@@ -501,7 +525,7 @@ export function VendorManagement() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredVendors.map(vendor => (
+                  {paginatedVendors.map(vendor => (
                     <tr key={vendor.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {vendor.name}
@@ -588,6 +612,61 @@ export function VendorManagement() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {!loading && paginatedVendors.length > 0 && (
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-gray-600">
+              Showing {filteredVendors.length === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredVendors.length)} of {filteredVendors.length}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Rows per page</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPage(1);
+                    setPageSize(parseInt(e.target.value, 10));
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={75}>75</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className={`px-3 py-2 text-sm rounded-md border ${page <= 1 ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  Prev
+                </button>
+                {getVisiblePageNumbers().map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPage(p)}
+                    className={`px-3 py-2 text-sm rounded-md border ${p === page ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className={`px-3 py-2 text-sm rounded-md border ${page >= totalPages ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -6,8 +6,8 @@ import {
 } from "../../utils/httpErrors.js";
 import { query, transaction } from "../../config/db.js";
 
-export async function getAllPos(filters = {}) {
-  return await poRepository.findAll(filters);
+export async function getAllPos(filters = {}, limit = null, offset = null) {
+  return await poRepository.findAll(filters, limit, offset);
 }
 
 export async function getPoById(id) {
@@ -386,8 +386,8 @@ export async function getPoHistory(poId) {
   return await poRepository.getPoHistory(poId);
 }
 
-export async function getAllHistory(filters = {}) {
-  return await poRepository.getAllHistory(filters);
+export async function getAllHistory(filters = {}, limit = null, offset = null) {
+  return await poRepository.getAllHistory(filters, limit, offset);
 }
 
 function normalizeHeader(header) {

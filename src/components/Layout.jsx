@@ -37,7 +37,7 @@ export function Layout({ children, role }) {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-8">
               <div className="flex items-center space-x-3">
-                <img src="https://ditos.technoboost.in/images/bag.svg" alt="VMS Logo" className="w-8 h-8" />
+                <img src="https://ditos.technoboost.in/images/loginLogo.svg" alt="VMS Logo" className="w-20" />
                 <div>
                   <h1 className="text-xl font-semibold text-gray-900">
                     Vendor Management System

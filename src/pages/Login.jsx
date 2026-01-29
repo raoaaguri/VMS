@@ -81,7 +81,7 @@ export function Login() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="flex flex-col items-center mb-8">
             <div className=" p-3 rounded-xl mb-4">
-              <img src="https://ditos.technoboost.in/images/bag.svg" alt="Logo" />
+              <img src="https://ditos.technoboost.in/images/loginLogo.svg" alt="Logo" />
             </div>
             <h2 className="text-3xl font-bold text-gray-900 text-center">
               Welcome Back

@@ -25,6 +25,9 @@ const statusColors = {
 
 export function VendorDashboard() {
   const [pos, setPos] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -35,12 +38,15 @@ export function VendorDashboard() {
   const [loadingStats, setLoadingStats] = useState(true);
 
   const navigate = useNavigate();
-  const { sortedData, requestSort, getSortIcon } = useSortableTable(pos);
 
   useEffect(() => {
     loadPos();
     loadStats();
-  }, [statusFilter, priorityFilter, typeFilter]);
+  }, [statusFilter, priorityFilter, typeFilter, page, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, priorityFilter, typeFilter, pageSize]);
 
   useEffect(() => {
     // Extract types from the loaded PO data
@@ -50,6 +56,28 @@ export function VendorDashboard() {
     }
   }, [pos]);
 
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const getVisiblePageNumbers = () => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+
+    let start = Math.max(1, page - 2);
+    let end = Math.min(totalPages, start + 4);
+
+    if (end - start < 4) {
+      start = Math.max(1, end - 4);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  };
+
+  const updateFilters = (nextFilters) => {
+    setPage(1);
+    setStatusFilter(nextFilters.status);
+    setPriorityFilter(nextFilters.priority);
+    setTypeFilter(nextFilters.type);
+  };
+
   const loadPos = async () => {
     try {
       setLoading(true);
@@ -58,8 +86,30 @@ export function VendorDashboard() {
       if (priorityFilter) params.priority = priorityFilter;
       if (typeFilter) params.type = typeFilter;
 
+      // Add pagination parameters
+      params.page = page;
+      params.limit = pageSize;
+
       const data = await api.vendor.getPos(params);
-      setPos(data);
+      // Handle both paginated and non-paginated response formats
+      if (data && typeof data === 'object') {
+        if (data.items && Array.isArray(data.items)) {
+          // Paginated response
+          setPos(data.items);
+          setTotal(data.total || data.items.length);
+        } else if (Array.isArray(data)) {
+          // Direct array response
+          setPos(data);
+          setTotal(data.length);
+        } else {
+          // Fallback
+          setPos([]);
+          setTotal(0);
+        }
+      } else {
+        setPos([]);
+        setTotal(0);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -158,8 +208,8 @@ export function VendorDashboard() {
               <Filter className="w-5 h-5 text-gray-400" />
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={(e) => updateFilters({ ...{ status: e.target.value, priority: priorityFilter, type: typeFilter } })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
               >
                 <option value="">All Statuses</option>
                 {STATUSES.map(status => (
@@ -169,8 +219,8 @@ export function VendorDashboard() {
 
               <select
                 value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={(e) => updateFilters({ ...{ status: statusFilter, priority: e.target.value, type: typeFilter } })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
               >
                 <option value="">All Priorities</option>
                 {PRIORITIES.map(priority => (
@@ -180,19 +230,16 @@ export function VendorDashboard() {
 
               <select
                 value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={(e) => updateFilters({ ...{ status: statusFilter, priority: priorityFilter, type: e.target.value } })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
               >
                 <option value="">All Types</option>
-                {availableTypes.map(type => (
-                  <option key={type} value={type}>{type.replace('_', ' ')}</option>
-                ))}
+                <option value="NEW_ITEMS">New Items</option>
+                <option value="REPEAT">Repeat</option>
               </select>
             </div>
             <button onClick={() => {
-              setStatusFilter('');
-              setPriorityFilter('');
-              setTypeFilter('');
+              updateFilters({ status: '', priority: '', type: '' });
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
         </div>
@@ -213,35 +260,20 @@ export function VendorDashboard() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('po_number')}
-                    >
-                      PO Number {getSortIcon('po_number')}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      PO Number
                     </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('po_date')}
-                    >
-                      PO Date {getSortIcon('po_date')}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      PO Date
                     </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('priority')}
-                    >
-                      Priority {getSortIcon('priority')}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Priority
                     </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('type')}
-                    >
-                      Type {getSortIcon('type')}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
                     </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('status')}
-                    >
-                      Status {getSortIcon('status')}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Line Items
@@ -252,14 +284,14 @@ export function VendorDashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedData.length === 0 ? (
+                  {pos.length === 0 ? (
                     <tr>
                       <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
                         No purchase orders found
                       </td>
                     </tr>
                   ) : (
-                    sortedData.map(po => (
+                    pos.map(po => (
                       <tr key={po.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {po.po_number}
@@ -301,6 +333,61 @@ export function VendorDashboard() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {!loading && pos.length > 0 && (
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-gray-600">
+              Showing {total === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Rows per page</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPage(1);
+                    setPageSize(parseInt(e.target.value, 10));
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={75}>75</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className={`px-3 py-2 text-sm rounded-md border ${page <= 1 ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  Prev
+                </button>
+                {getVisiblePageNumbers().map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPage(p)}
+                    className={`px-3 py-2 text-sm rounded-md border ${p === page ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className={`px-3 py-2 text-sm rounded-md border ${page >= totalPages ? 'text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -21,6 +21,13 @@ export function useSortableTable(data, config = {}) {
 
     if (typeof value === "string") {
       const trimmed = value.trim();
+
+      // Handle priority sorting with custom order
+      const priorityOrder = { URGENT: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+      if (priorityOrder[trimmed] !== undefined) {
+        return { type: "priority", value: priorityOrder[trimmed] };
+      }
+
       if (trimmed !== "" && /^-?\d+(?:\.\d+)?$/.test(trimmed)) {
         const num = parseFloat(trimmed);
         return { type: "number", value: Number.isNaN(num) ? trimmed : num };
@@ -45,6 +52,14 @@ export function useSortableTable(data, config = {}) {
       if (bComp.type === "null") return -1;
 
       if (aComp.type === "number" && bComp.type === "number") {
+        if (aComp.value < bComp.value)
+          return sortConfig.direction === "asc" ? -1 : 1;
+        if (aComp.value > bComp.value)
+          return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      }
+
+      if (aComp.type === "priority" && bComp.type === "priority") {
         if (aComp.value < bComp.value)
           return sortConfig.direction === "asc" ? -1 : 1;
         if (aComp.value > bComp.value)

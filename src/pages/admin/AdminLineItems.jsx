@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package } from 'lucide-react';
 import { Layout } from '../../components/Layout';
@@ -11,8 +11,11 @@ export function AdminLineItems() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(10);
   const [vendors, setVendors] = useState([]);
+  const [vendorSearchTerm, setVendorSearchTerm] = useState('');
+  const [showVendorDropdown, setShowVendorDropdown] = useState(false);
+  const vendorDropdownRef = useRef(null);
   const [filters, setFilters] = useState({
     status: 'ALL',
     priority: 'ALL',
@@ -28,6 +31,19 @@ export function AdminLineItems() {
     loadVendors();
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target)) {
+        setShowVendorDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const loadVendors = async () => {
     try {
       const data = await api.admin.getVendors();
@@ -40,6 +56,31 @@ export function AdminLineItems() {
   const updateFilters = (nextFilters) => {
     setPage(1);
     setFilters(nextFilters);
+  };
+
+  const getFilteredVendors = () => {
+    if (!vendorSearchTerm) return vendors;
+    return vendors.filter(vendor =>
+      vendor.name.toLowerCase().includes(vendorSearchTerm.toLowerCase())
+    );
+  };
+
+  const handleVendorSelect = (vendorId, vendorName) => {
+    setFilters({ ...filters, vendor_id: vendorId });
+    setVendorSearchTerm(vendorName);
+    setShowVendorDropdown(false);
+  };
+
+  const handleVendorInputClick = () => {
+    setShowVendorDropdown(true);
+    if (filters.vendor_id !== 'ALL') {
+      setVendorSearchTerm('');
+    }
+  };
+
+  const handleVendorInputChange = (e) => {
+    setVendorSearchTerm(e.target.value);
+    setShowVendorDropdown(true);
   };
 
   const fetchLineItems = async () => {
@@ -121,7 +162,7 @@ export function AdminLineItems() {
                 <select
                   value={filters.status}
                   onChange={(e) => updateFilters({ ...filters, status: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
                 >
                   <option value="ALL">All Statuses</option>
                   <option value="CREATED">Created</option>
@@ -138,7 +179,7 @@ export function AdminLineItems() {
                 <select
                   value={filters.priority}
                   onChange={(e) => updateFilters({ ...filters, priority: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
                 >
                   <option value="ALL">All Priorities</option>
                   <option value="LOW">Low</option>
@@ -147,24 +188,54 @@ export function AdminLineItems() {
                   <option value="URGENT">Urgent</option>
                 </select>
               </div>
-              <div className="">
+              <div className="relative" ref={vendorDropdownRef}>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Vendors
                 </label>
-                <select
-                  value={filters.vendor_id}
-                  onChange={(e) => updateFilters({ ...filters, vendor_id: e.target.value })}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="ALL">All Vendors</option>
-                  {vendors.map(vendor => (
-                    <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
-                  ))}
-                </select>
+                <input
+                  type="text"
+                  placeholder="Search vendors..."
+                  value={vendorSearchTerm}
+                  onChange={handleVendorInputChange}
+                  onClick={handleVendorInputClick}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300 w-48"
+                />
+                {showVendorDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <div className="px-3 py-2 text-sm text-gray-500 border-b border-gray-200">
+                      {vendorSearchTerm ? `Search results for "${vendorSearchTerm}"` : 'All Vendors'}
+                    </div>
+                    <div
+                      onClick={() => {
+                        setFilters({ ...filters, vendor_id: 'ALL' });
+                        setVendorSearchTerm('');
+                        setShowVendorDropdown(false);
+                      }}
+                      className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 border-b border-gray-100 font-medium text-blue-600"
+                    >
+                      All Vendors
+                    </div>
+                    {getFilteredVendors().length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-gray-500">No vendors found</div>
+                    ) : (
+                      getFilteredVendors().map(vendor => (
+                        <div
+                          key={vendor.id}
+                          onClick={() => handleVendorSelect(vendor.id, vendor.name)}
+                          className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+                        >
+                          {vendor.name}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             <button onClick={() => {
               updateFilters({ status: 'ALL', priority: 'ALL', vendor_id: 'ALL' });
+              setVendorSearchTerm('');
+              setShowVendorDropdown(false);
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 
@@ -302,8 +373,9 @@ export function AdminLineItems() {
                       setPage(1);
                       setPageSize(parseInt(e.target.value, 10));
                     }}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
                   >
+                    <option value={10}>10</option>
                     <option value={25}>25</option>
                     <option value={50}>50</option>
                     <option value={75}>75</option>

@@ -1,6 +1,6 @@
 import { getDbClient, query, queryOne } from "../../config/db.js";
 
-export async function findAll(filters = {}) {
+export async function findAll(filters = {}, limit = null, offset = null) {
   let sql = `
     SELECT 
       po.*,
@@ -12,6 +12,13 @@ export async function findAll(filters = {}) {
         'contact_email', v.contact_email
       ) as vendor,
       (SELECT COUNT(*) FROM purchase_order_line_items WHERE po_id = po.id) as line_items_count
+    FROM purchase_orders po
+    LEFT JOIN vendors v ON po.vendor_id = v.id
+  `;
+
+  // Build count query for total
+  let countSql = `
+    SELECT COUNT(*) as total
     FROM purchase_orders po
     LEFT JOIN vendors v ON po.vendor_id = v.id
   `;
@@ -41,13 +48,39 @@ export async function findAll(filters = {}) {
   }
 
   if (conditions.length > 0) {
-    sql += ` WHERE ${conditions.join(" AND ")}`;
+    const whereClause = ` WHERE ${conditions.join(" AND ")}`;
+    sql += whereClause;
+    countSql += whereClause;
   }
 
   sql += ` ORDER BY po.created_at DESC`;
 
-  const data = await query(sql, params);
-  return data;
+  // Add pagination if provided
+  if (limit !== null) {
+    sql += ` LIMIT $${paramNum++}`;
+    params.push(limit);
+  }
+
+  if (offset !== null) {
+    sql += ` OFFSET $${paramNum++}`;
+    params.push(offset);
+  }
+
+  // Execute both queries
+  const [data, countResult] = await Promise.all([
+    query(sql, params),
+    query(countSql, params.slice(0, conditions.length)), // Use same params but without limit/offset
+  ]);
+
+  const total = parseInt(countResult[0]?.total || "0");
+
+  return {
+    items: data,
+    total: total,
+    page:
+      offset !== null && limit !== null ? Math.floor(offset / limit) + 1 : 1,
+    totalPages: limit !== null ? Math.ceil(total / limit) : 1,
+  };
 }
 
 export async function findById(id) {
@@ -342,7 +375,7 @@ export async function getPoHistory(poId) {
   return allHistory;
 }
 
-export async function getAllHistory(filters = {}) {
+export async function getAllHistory(filters = {}, limit = null, offset = null) {
   const params = [];
   let paramNum = 1;
 
@@ -397,6 +430,7 @@ export async function getAllHistory(filters = {}) {
     ...h,
     level: "PO",
     changed_by_name: h.users?.name || "Unknown",
+    changed_by_role: h.users?.email?.includes("@") ? "Admin" : "System",
     line_item_reference: null,
   }));
 
@@ -404,6 +438,7 @@ export async function getAllHistory(filters = {}) {
     ...h,
     level: "LINE_ITEM",
     changed_by_name: h.users?.name || "Unknown",
+    changed_by_role: h.users?.email?.includes("@") ? "Admin" : "System",
     line_item_reference:
       h.product_code && h.product_name
         ? `${h.product_code} - ${h.product_name}`
@@ -414,5 +449,18 @@ export async function getAllHistory(filters = {}) {
     (a, b) => new Date(b.changed_at) - new Date(a.changed_at),
   );
 
-  return allHistory;
+  // Apply pagination if needed
+  const total = allHistory.length;
+  const items =
+    limit !== null
+      ? allHistory.slice(offset || 0, (offset || 0) + limit)
+      : allHistory;
+
+  return {
+    items: items,
+    total: total,
+    page:
+      offset !== null && limit !== null ? Math.floor(offset / limit) + 1 : 1,
+    totalPages: limit !== null ? Math.ceil(total / limit) : 1,
+  };
 }
