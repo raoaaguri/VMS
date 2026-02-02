@@ -1,6 +1,8 @@
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, LayoutDashboard, List, History, Users } from 'lucide-react';
+import { SessionStatus } from './SessionStatus';
+import { SessionWarning } from './SessionWarning';
 
 export function Layout({ children, role }) {
   const { user, logout } = useAuth();
@@ -32,6 +34,7 @@ export function Layout({ children, role }) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <SessionWarning />
       <nav className="bg-white shadow-sm border-b border-gray-200">
         <div className="w-full px-3 sm:px-4 lg:px-5">
           <div className="flex justify-between items-center h-16">
@@ -72,10 +75,7 @@ export function Layout({ children, role }) {
             </div>
 
             <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-                <p className="text-xs text-gray-500">{user?.email}</p>
-              </div>
+              <SessionStatus />
               <button
                 onClick={handleLogout}
                 className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"

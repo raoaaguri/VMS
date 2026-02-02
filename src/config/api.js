@@ -83,6 +83,27 @@ export async function apiRequest(endpoint, options = {}) {
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
 
+      // Handle 401 Unauthorized - Token expired or invalid
+      if (response.status === 401) {
+        logger.warn(`[${requestId}] Token expired/invalid - Logging out user`, {
+          status: response.status,
+          endpoint,
+          fullUrl,
+          duration: `${duration}ms`,
+        });
+
+        // Clear stored authentication data
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+
+        // Redirect to login page
+        if (window.location.pathname !== "/login") {
+          window.location.href = "/login";
+        }
+
+        throw new Error("Session expired. Please login again.");
+      }
+
       logger.error(
         `[${requestId}] API Request Failed`,
         new Error(errorMessage),

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
+import { TableCell, TableHeader } from '../../components/TableComponents';
+import { formatDate, formatPrice, formatCurrency } from '../../utils/formatters';
 import { api } from '../../config/api';
 import { Building, Plus, ArrowLeft, Edit, X, CheckCircle, XCircle, ChevronDown } from 'lucide-react';
 
@@ -504,37 +506,19 @@ export function VendorManagement() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Vendor Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Code
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Contact
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Approval Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Active Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    <TableHeader columnName="name">Vendor Name</TableHeader>
+                    <TableHeader columnName="code">Code</TableHeader>
+                    <TableHeader columnName="contact">Contact</TableHeader>
+                    <TableHeader columnName="approval_status">Approval Status</TableHeader>
+                    <TableHeader columnName="active_status">Active Status</TableHeader>
+                    <TableHeader columnName="actions">Actions</TableHeader>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedVendors.map(vendor => (
                     <tr key={vendor.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {vendor.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
-                          {vendor.code || '-'}
-                        </span>
-                      </td>
+                      <TableCell value={vendor.name} columnName="name" />
+                      <TableCell value={vendor.code || '-'} columnName="code" />
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div>
                           <p className="font-medium text-gray-900">{vendor.contact_person}</p>

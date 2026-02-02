@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
+import { TableCell, TableHeader } from '../../components/TableComponents';
+import { formatDate, formatPrice, formatCurrency } from '../../utils/formatters';
 import { api } from '../../config/api';
 import { Package, Filter, Eye, CheckCircle, AlertCircle } from 'lucide-react';
 import { useSortableTable } from '../../hooks/useSortableTable';
@@ -260,27 +262,13 @@ export function VendorDashboard() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      PO Number
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      PO Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Priority
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Line Items
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    <TableHeader columnName="po_number">PO Number</TableHeader>
+                    <TableHeader columnName="po_date">PO Date</TableHeader>
+                    <TableHeader columnName="priority">Priority</TableHeader>
+                    <TableHeader columnName="type">Type</TableHeader>
+                    <TableHeader columnName="status">Status</TableHeader>
+                    <TableHeader columnName="line_items">Line Items</TableHeader>
+                    <TableHeader columnName="actions">Actions</TableHeader>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -293,32 +281,20 @@ export function VendorDashboard() {
                   ) : (
                     pos.map(po => (
                       <tr key={po.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {po.po_number}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(po.po_date).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric"
-                          }).replace(/ /g, "-")}
-                        </td>
+                        <TableCell value={po.po_number} columnName="po_number" />
+                        <TableCell value={po.po_date} columnName="po_date" type="date" />
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[po.priority]}`}>
                             {po.priority}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {po.type.replace('_', ' ')}
-                        </td>
+                        <TableCell value={po.type.replace('_', ' ')} columnName="type" />
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[po.status]}`}>
                             {po.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {po.line_items_count}
-                        </td>
+                        <TableCell value={po.line_items_count} columnName="line_items" />
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <button
                             onClick={() => navigate(`/vendor/pos/${po.id}`)}

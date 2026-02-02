@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package } from 'lucide-react';
 import { Layout } from '../../components/Layout';
+import { TableCell, TableHeader } from '../../components/TableComponents';
+import { formatDate, formatPrice, formatCurrency } from '../../utils/formatters';
 import { api } from '../../config/api';
 import { useSortableTable } from '../../hooks/useSortableTable';
 
@@ -301,9 +303,7 @@ export function AdminLineItems() {
                     >
                       Status {getSortIcon('status')}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Delayed
-                    </th>
+                    <TableHeader columnName="delayed">Delayed</TableHeader>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -316,42 +316,22 @@ export function AdminLineItems() {
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600">
                         {item.po_number}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {item.vendor_name}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {item.product_code}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        {item.product_name}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {item.quantity}
-                      </td>
+                      <TableCell value={item.vendor_name} columnName="vendor_name" />
+                      <TableCell value={parseInt(item.product_code) || 0} columnName="product_code" />
+                      <TableCell value={item.product_name} columnName="product_name" />
+                      <TableCell value={item.quantity} columnName="quantity" />
                       <td className="px-4 py-3 whitespace-nowrap text-sm">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(item.line_priority)}`}>
                           {item.line_priority}
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {item.expected_delivery_date ? new Date(item.expected_delivery_date).toLocaleDateString() : '-'}
-                      </td>
+                      <TableCell value={item.expected_delivery_date} columnName="expected_delivery_date" type="date" />
                       <td className="px-4 py-3 whitespace-nowrap text-sm">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
                           {item.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm">
-                        {item.is_delayed ? (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            Yes
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            No
-                          </span>
-                        )}
-                      </td>
+                      <TableCell value={item.is_delayed ? 'Yes' : 'No'} columnName="delayed" />
                     </tr>
                   ))}
                 </tbody>
@@ -414,7 +394,7 @@ export function AdminLineItems() {
             </div>
           )}
         </div>
-      </div>
-    </Layout>
+      </div >
+    </Layout >
   );
 }

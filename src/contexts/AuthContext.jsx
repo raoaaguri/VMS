@@ -5,6 +5,20 @@ import { logger as baseLogger } from '../utils/logger';
 const AuthContext = createContext(null);
 const logger = baseLogger.child('AuthContext');
 
+// Function to check if JWT token is expired
+const isTokenExpired = (token) => {
+  if (!token) return true;
+
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Date.now() / 1000;
+    return payload.exp < currentTime;
+  } catch (error) {
+    logger.error('Error parsing JWT token', error);
+    return true; // If we can't parse it, assume it's invalid
+  }
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,13 +31,21 @@ export function AuthProvider({ children }) {
       const storedToken = localStorage.getItem('token');
 
       if (storedUser && storedToken) {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        logger.info('✅ Session restored from localStorage', {
-          userId: parsedUser.id,
-          email: parsedUser.email,
-          role: parsedUser.role
-        });
+        // Check if token is expired
+        if (isTokenExpired(storedToken)) {
+          logger.warn('⚠️ Stored token is expired - Clearing session');
+          localStorage.removeItem('user');
+          localStorage.removeItem('token');
+          setUser(null);
+        } else {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          logger.info('✅ Session restored from localStorage', {
+            userId: parsedUser.id,
+            email: parsedUser.email,
+            role: parsedUser.role
+          });
+        }
       } else {
         logger.info('ℹ️  No existing session found - User needs to login');
       }
@@ -32,10 +54,32 @@ export function AuthProvider({ children }) {
         storedUserExists: !!localStorage.getItem('user'),
         storedTokenExists: !!localStorage.getItem('token')
       });
+      // Clear any corrupted data
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      setUser(null);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // Set up periodic session timeout check
+  useEffect(() => {
+    if (!user) return; // Only run if user is logged in
+
+    const checkSessionTimeout = () => {
+      const token = localStorage.getItem('token');
+      if (token && isTokenExpired(token)) {
+        logger.warn('⏰ Session expired during active use - Logging out');
+        logout();
+      }
+    };
+
+    // Check every 5 minutes
+    const interval = setInterval(checkSessionTimeout, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   const login = async (email, password) => {
     const loginStartTime = performance.now();
@@ -154,10 +198,19 @@ export function AuthProvider({ children }) {
       setUser(null);
 
       logger.info(`[${requestId}] ✅ Logout Successful - Session cleared from localStorage`);
+
+      // Redirect to login page if not already there
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     } catch (error) {
       logger.error(`[${requestId}] ❌ Error during logout`, error);
       // Still clear the state even if localStorage cleanup fails
       setUser(null);
+      // Still redirect to login
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
   };
 

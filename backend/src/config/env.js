@@ -16,7 +16,7 @@ function validateEnv(varName, defaultValue) {
   if (isProduction) {
     throw new Error(
       `Missing required environment variable: ${varName}\n` +
-        `Please set ${varName} in your production environment.`
+        `Please set ${varName} in your production environment.`,
     );
   }
   return defaultValue;
@@ -58,9 +58,14 @@ export const config = {
       process.env.JWT_SECRET ||
       validateEnv(
         "JWT_SECRET",
-        "vendor-management-secret-key-change-in-production"
+        "vendor-management-secret-key-change-in-production",
       ),
-    expiresIn: "7d",
+    expiresIn: "7d", // Default fallback
+    // Role-based session timeouts
+    sessionTimeouts: {
+      ADMIN: "12h", // 12 hours for admin
+      VENDOR: "24h", // 24 hours for vendor
+    },
   },
 
   erp: {
@@ -75,7 +80,7 @@ export const config = {
     database: process.env.PGDATABASE || validateEnv("PGDATABASE", "vms"),
     user: process.env.PGUSER || validateEnv("PGUSER", "postgres"),
     password: String(
-      process.env.PGPASSWORD || validateEnv("PGPASSWORD", "postgres")
+      process.env.PGPASSWORD || validateEnv("PGPASSWORD", "postgres"),
     ),
     ssl: process.env.PGSSLMODE === "require",
   },
@@ -86,7 +91,7 @@ if (config.isDevelopment) {
   console.log("📋 Configuration loaded:");
   console.log(`  Environment: ${config.nodeEnv}`);
   console.log(
-    `  Database: ${config.postgres.user}@${config.postgres.host}:${config.postgres.port}/${config.postgres.database}`
+    `  Database: ${config.postgres.user}@${config.postgres.host}:${config.postgres.port}/${config.postgres.database}`,
   );
   console.log(`  Port: ${config.port}`);
 }

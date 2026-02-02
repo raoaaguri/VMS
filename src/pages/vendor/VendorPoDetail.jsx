@@ -3,8 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { Toast, useToast } from '../../components/Toast';
 import { Loader } from '../../components/Loader';
+import { TableCell, TableHeader } from '../../components/TableComponents';
+import { ProductPopup } from '../../components/ProductPopup';
+import { formatDate, formatPrice, formatCurrency } from '../../utils/formatters';
 import { api } from '../../config/api';
-import { ArrowLeft, Package, Building, CheckCircle, Calendar, History, X, Filter } from 'lucide-react';
+import { ArrowLeft, Package, Building, CheckCircle, Calendar, History, X, Filter, Download, ChevronDown } from 'lucide-react';
 
 const STATUSES = ['ACCEPTED', 'PLANNED', 'DELIVERED'];
 
@@ -40,14 +43,114 @@ export function VendorPoDetail() {
   const [lineItemPage, setLineItemPage] = useState(1);
   const [lineItemPageSize, setLineItemPageSize] = useState(10);
   const [updatingItemId, setUpdatingItemId] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showProductPopup, setShowProductPopup] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
 
   useEffect(() => {
     loadPo();
   }, [id]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showExportDropdown && !event.target.closest('.export-dropdown')) {
+        setShowExportDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showExportDropdown]);
+
   useEffect(() => {
     setLineItemPage(1);
   }, [lineItemFilters, lineItemPageSize]);
+
+  // Add handler for product popup
+  const handleProductClick = (item) => {
+    setSelectedProduct(item);
+    setShowProductPopup(true);
+  };
+
+  const closeProductPopup = () => {
+    setShowProductPopup(false);
+    setSelectedProduct(null);
+  };
+
+  const exportPOData = () => {
+    if (!po) return;
+
+    // Create CSV content
+    const headers = [
+      'Design Code',
+      'Combination Code',
+      'Product Name',
+      'Style',
+      'Sub-Style',
+      'Region',
+      'Color',
+      'Sub-Color',
+      'Polish',
+      'Size',
+      'Weight',
+      'Quantity',
+      'Delivered Qty',
+      'Pending Qty',
+      'GST%',
+      'Price',
+      'MRP',
+      'Expected Date',
+      'Status',
+      'Priority'
+    ];
+
+    const csvContent = [
+      headers.join(','),
+      ...paginatedLineItems.map(item => [
+        parseInt(item.design_code) || 0,
+        parseInt(item.combination_code) || 0,
+        `"${item.product_name || ''}"`,
+        `"${item.style || ''}"`,
+        `"${item.sub_style || ''}"`,
+        `"${item.region || ''}"`,
+        `"${item.color || ''}"`,
+        `"${item.sub_color || ''}"`,
+        `"${item.polish || ''}"`,
+        `"${item.size || ''}"`,
+        item.weight || 0,
+        item.quantity || 0,
+        item.received_qty || 0,
+        (item.quantity || 0) - (item.received_qty || 0),
+        item.gst_percent || 0,
+        item.price || 0,
+        item.mrp || 0,
+        formatDate(item.expected_delivery_date),
+        `"${item.status || ''}"`,
+        `"${item.line_priority || ''}"`
+      ].join(','))
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `PO_${po.po_number}_data.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setShowExportDropdown(false);
+    showSuccess('PO data exported successfully!');
+  };
+
+  const exportWithImage = () => {
+    // For now, just show a message that this is not implemented
+    setShowExportDropdown(false);
+    showError('Export with images feature coming soon!');
+  };
 
   const loadPo = async () => {
     try {
@@ -238,7 +341,37 @@ export function VendorPoDetail() {
                 <History className="w-4 h-4" />
                 <span>{loadingHistory ? 'Loading...' : 'View History'}</span>
               </button>
-              <button className='bg-blue-500 px-4 py-2 text-white rounded-lg hover:bg-blue-600'>Export PO</button>
+
+              <div className="relative export-dropdown">
+                <button
+                  onClick={() => setShowExportDropdown(!showExportDropdown)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Export PO</span>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+
+                {showExportDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                    <button
+                      onClick={exportPOData}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center space-x-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Just Data</span>
+                    </button>
+                    <button
+                      onClick={exportWithImage}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center space-x-2"
+                    >
+                      <Package className="w-4 h-4" />
+                      <span>With Images</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <button className='bg-green-500 px-4 py-2 text-white rounded-lg hover:bg-green-600'>Accept</button>
 
               {po.status === 'CREATED' && (
@@ -272,7 +405,7 @@ export function VendorPoDetail() {
                 <div className='flex items-center gap-x-3'>
                   <label className="text-sm text-gray-500">PO Date :</label>
                   <p className="text-gray-900 font-medium text-sm">
-                    {new Date(po.po_date).toLocaleDateString()}
+                    {formatDate(po.po_date)}
                   </p>
                 </div>
 
@@ -376,27 +509,27 @@ export function VendorPoDetail() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Design Code</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">combination Code</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Style</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sub-Style	</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Region</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Color</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sub-Color</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Polish</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Weight</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Received Qty</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pending Qty</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">GST%</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">MRP</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expected Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                  <TableHeader columnName="design_code">Design Code</TableHeader>
+                  <TableHeader columnName="combination_code">Combination Code</TableHeader>
+                  <TableHeader columnName="product_name">Product Name</TableHeader>
+                  <TableHeader columnName="style">Style</TableHeader>
+                  <TableHeader columnName="sub_style">Sub-Style</TableHeader>
+                  <TableHeader columnName="region">Region</TableHeader>
+                  <TableHeader columnName="color">Color</TableHeader>
+                  <TableHeader columnName="sub_color">Sub-Color</TableHeader>
+                  <TableHeader columnName="polish">Polish</TableHeader>
+                  <TableHeader columnName="size">Size</TableHeader>
+                  <TableHeader columnName="weight">Weight</TableHeader>
+                  <TableHeader columnName="quantity">Quantity</TableHeader>
+                  <TableHeader columnName="received_qty">Delivered Qty</TableHeader>
+                  <TableHeader columnName="pending_qty">Pending Qty</TableHeader>
+                  <TableHeader columnName="gst_percent">GST%</TableHeader>
+                  <TableHeader columnName="price">Price</TableHeader>
+                  <TableHeader columnName="mrp">MRP</TableHeader>
+                  <TableHeader columnName="expected_delivery_date">Expected Date</TableHeader>
+                  <TableHeader columnName="status">Status</TableHeader>
+                  <TableHeader columnName="priority">Priority</TableHeader>
+                  <TableHeader columnName="action">Action</TableHeader>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -409,23 +542,27 @@ export function VendorPoDetail() {
                 )}
                 {paginatedLineItems.map(item => (
                   <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.design_code || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.combination_code || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.product_name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.style || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.sub_style || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.region || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.color || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.sub_color || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.polish || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.size || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500 text-right">{item.weight || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{item.quantity}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{item.received_qty || 0}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{(item.quantity || 0) - (item.received_qty || 0)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{item.gst_percent}%</td>
-                    <td className="px-4 py-3 text-sm text-gray-500 text-right">{item.price}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500 text-right">{item.mrp}</td>
+                    <TableCell value={parseInt(item.design_code) || 0} columnName="design_code" />
+                    <TableCell
+                      value={parseInt(item.combination_code) || 0}
+                      columnName="combination_code"
+                      onClick={() => handleProductClick(item)}
+                    />
+                    <TableCell value={item.product_name} columnName="product_name" />
+                    <TableCell value={item.style} columnName="style" />
+                    <TableCell value={item.sub_style} columnName="sub_style" />
+                    <TableCell value={item.region} columnName="region" />
+                    <TableCell value={item.color} columnName="color" />
+                    <TableCell value={item.sub_color} columnName="sub_color" />
+                    <TableCell value={item.polish} columnName="polish" />
+                    <TableCell value={item.size} columnName="size" />
+                    <TableCell value={item.weight} columnName="weight" type="price" />
+                    <TableCell value={item.quantity} columnName="quantity" />
+                    <TableCell value={item.received_qty || 0} columnName="received_qty" />
+                    <TableCell value={(item.quantity || 0) - (item.received_qty || 0)} columnName="pending_qty" />
+                    <TableCell value={item.gst_percent} columnName="gst_percent" />
+                    <TableCell value={item.price} columnName="price" type="currency" />
+                    <TableCell value={item.mrp} columnName="mrp" type="currency" />
                     <td className="px-4 py-3 text-sm">
                       {showAcceptForm || (item.status !== 'DELIVERED' && item.status !== 'CREATED') ? (
                         <div className="flex items-center gap-2">
@@ -454,7 +591,7 @@ export function VendorPoDetail() {
                       ) : (
                         <span className="text-gray-500">
                           {acceptDates[item.id] || item.expected_delivery_date
-                            ? new Date(acceptDates[item.id] || item.expected_delivery_date).toLocaleDateString()
+                            ? formatDate(acceptDates[item.id] || item.expected_delivery_date)
                             : '-'}
                         </span>
                       )}
@@ -587,11 +724,7 @@ export function VendorPoDetail() {
                       history.map((entry, idx) => (
                         <tr key={idx} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-sm whitespace-nowrap">
-                            {new Date(entry.changed_at).toLocaleDateString("en-GB", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric"
-                            }).replace(/ /g, "-")}
+                            {formatDate(entry.changed_at)}
                           </td>
                           <td className="px-4 py-3 text-sm">
                             {entry.users?.name} ({entry.changed_by_role})
@@ -615,6 +748,12 @@ export function VendorPoDetail() {
           </div>
         )}
       </div>
+      {/* Product Popup */}
+      <ProductPopup
+        isOpen={showProductPopup}
+        onClose={closeProductPopup}
+        product={selectedProduct}
+      />
     </Layout>
   );
 }
