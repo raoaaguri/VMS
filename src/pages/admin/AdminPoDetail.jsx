@@ -103,7 +103,7 @@ export function AdminPoDetail() {
 
     const csvContent = [
       headers.join(','),
-      ...paginatedLineItems.map(item => [
+      ...filteredLineItems.map(item => [
         parseInt(item.design_code) || 0,
         parseInt(item.combination_code) || 0,
         `"${item.product_name || ''}"`,
