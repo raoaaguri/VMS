@@ -85,23 +85,60 @@ export async function apiRequest(endpoint, options = {}) {
 
       // Handle 401 Unauthorized - Token expired or invalid
       if (response.status === 401) {
-        logger.warn(`[${requestId}] Token expired/invalid - Logging out user`, {
-          status: response.status,
-          endpoint,
-          fullUrl,
-          duration: `${duration}ms`,
-        });
+        logger.warn(
+          `[${requestId}] Token expired/invalid - Checking if immediate logout needed`,
+          {
+            status: response.status,
+            endpoint,
+            fullUrl,
+            duration: `${duration}ms`,
+          },
+        );
 
-        // Clear stored authentication data
-        localStorage.removeItem("user");
-        localStorage.removeItem("token");
+        // Only logout if this is not a login endpoint and token is actually expired
+        const token = localStorage.getItem("token");
+        const isLoginEndpoint = endpoint.includes("/auth/login");
 
-        // Redirect to login page
-        if (window.location.pathname !== "/login") {
-          window.location.href = "/login";
+        if (!isLoginEndpoint && token) {
+          try {
+            // Check if token is actually expired
+            const payload = JSON.parse(atob(token.split(".")[1]));
+            const currentTime = Date.now() / 1000;
+            const bufferTime = 5 * 60; // 5 minutes buffer
+
+            if (payload.exp < currentTime + bufferTime) {
+              logger.warn(
+                `[${requestId}] Token confirmed expired - Logging out user`,
+              );
+              // Clear stored authentication data
+              localStorage.removeItem("user");
+              localStorage.removeItem("token");
+
+              // Only redirect if we're not already on login page
+              if (window.location.pathname !== "/login") {
+                window.location.href = "/login";
+              }
+              throw new Error("Session expired. Please login again.");
+            } else {
+              logger.info(`[${requestId}] Token still valid - Not logging out`);
+            }
+          } catch (parseError) {
+            logger.error(
+              `[${requestId}] Error parsing token during 401 check`,
+              parseError,
+            );
+            // Clear stored authentication data
+            localStorage.removeItem("user");
+            localStorage.removeItem("token");
+
+            // Only redirect if we're not already on login page
+            if (window.location.pathname !== "/login") {
+              window.location.href = "/login";
+            }
+          }
         }
 
-        throw new Error("Session expired. Please login again.");
+        throw new Error(errorMessage);
       }
 
       logger.error(

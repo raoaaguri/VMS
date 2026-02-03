@@ -12,7 +12,9 @@ const isTokenExpired = (token) => {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     const currentTime = Date.now() / 1000;
-    return payload.exp < currentTime;
+    // Add 5-minute buffer to prevent premature expiration
+    const bufferTime = 5 * 60; // 5 minutes
+    return payload.exp < (currentTime + bufferTime);
   } catch (error) {
     logger.error('Error parsing JWT token', error);
     return true; // If we can't parse it, assume it's invalid
@@ -75,8 +77,8 @@ export function AuthProvider({ children }) {
       }
     };
 
-    // Check every 5 minutes
-    const interval = setInterval(checkSessionTimeout, 5 * 60 * 1000);
+    // Check every 15 minutes (reduced from 5 minutes)
+    const interval = setInterval(checkSessionTimeout, 15 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [user]);
