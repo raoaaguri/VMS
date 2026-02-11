@@ -216,7 +216,25 @@ export const api = {
     getDashboardStats: () => apiRequest("/api/v1/admin/dashboard/stats"),
     getAllHistory: () => apiRequest("/api/v1/admin/history"),
     getPos: (params) => {
-      const query = new URLSearchParams(params).toString();
+      // Manually build query string to avoid URLSearchParams encoding issues
+      const queryParts = [];
+
+      Object.keys(params).forEach((key) => {
+        const value = params[key];
+        if (key === "status" && Array.isArray(value)) {
+          // Send status as comma-separated values
+          queryParts.push(`status=${encodeURIComponent(value.join(","))}`);
+        } else if (Array.isArray(value)) {
+          // For other arrays, send multiple parameters
+          value.forEach((val) =>
+            queryParts.push(`${key}=${encodeURIComponent(val)}`),
+          );
+        } else if (value !== undefined && value !== null && value !== "") {
+          queryParts.push(`${key}=${encodeURIComponent(value)}`);
+        }
+      });
+
+      const query = queryParts.join("&");
       return apiRequest(`/api/v1/admin/pos${query ? `?${query}` : ""}`);
     },
     importPosFromCsv: (csvText) =>
@@ -250,7 +268,25 @@ export const api = {
         body: JSON.stringify({ csv_text: csvText }),
       }),
     getLineItems: (params) => {
-      const query = new URLSearchParams(params).toString();
+      // Manually build query string to avoid URLSearchParams encoding issues
+      const queryParts = [];
+
+      Object.keys(params).forEach((key) => {
+        const value = params[key];
+        if (key === "status" && Array.isArray(value)) {
+          // Send status as comma-separated values
+          queryParts.push(`status=${encodeURIComponent(value.join(","))}`);
+        } else if (Array.isArray(value)) {
+          // For other arrays, send multiple parameters
+          value.forEach((val) =>
+            queryParts.push(`${key}=${encodeURIComponent(val)}`),
+          );
+        } else if (value !== undefined && value !== null && value !== "") {
+          queryParts.push(`${key}=${encodeURIComponent(value)}`);
+        }
+      });
+
+      const query = queryParts.join("&");
       return apiRequest(`/api/v1/admin/line-items${query ? `?${query}` : ""}`);
     },
     getVendors: (params) => {

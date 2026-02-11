@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { Toast, useToast } from '../../components/Toast';
@@ -42,20 +42,47 @@ export function AdminPoDetail() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [lineItemPage, setLineItemPage] = useState(1);
   const [lineItemPageSize, setLineItemPageSize] = useState(10);
-  const [lineItemFilters, setLineItemFilters] = useState({ status: 'ALL', priority: 'ALL' });
+  const [lineItemFilters, setLineItemFilters] = useState({
+    status: 'ALL',
+    priority: 'ALL',
+    month: 'ALL',
+    category: 'ALL',
+    itemName: '',
+    style: 'ALL',
+    brand: 'ALL'
+  });
+  const [availableFilters, setAvailableFilters] = useState({
+    months: [],
+    categories: [],
+    itemNames: [],
+    styles: [],
+    brands: []
+  });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showProductPopup, setShowProductPopup] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [showMonthDropdown, setShowMonthDropdown] = useState(false);
+  const monthDropdownRef = useRef(null);
 
   useEffect(() => {
     loadPo();
   }, [id]);
+
+  useEffect(() => {
+    if (po?.line_items) {
+      extractAvailableFilters();
+    }
+  }, [po]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showExportDropdown && !event.target.closest('.export-dropdown')) {
         setShowExportDropdown(false);
+      }
+      // Close month dropdown when clicking outside
+      if (monthDropdownRef.current && !monthDropdownRef.current.contains(event.target)) {
+        setShowMonthDropdown(false);
       }
     };
 
@@ -67,6 +94,93 @@ export function AdminPoDetail() {
   const handleProductClick = (item) => {
     setSelectedProduct(item);
     setShowProductPopup(true);
+  };
+
+  const extractAvailableFilters = () => {
+    if (!po?.line_items) return;
+
+    const months = new Set();
+    const categories = new Set();
+    const itemNames = new Set();
+    const styles = new Set();
+    const brands = new Set();
+
+    po.line_items.forEach(item => {
+      // Extract months from created_at
+      if (item.created_at) {
+        const date = new Date(item.created_at);
+        const monthYear = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        months.add(monthYear);
+      }
+
+      // Extract categories (using region as category)
+      if (item.region) categories.add(item.region);
+
+      // Extract item names
+      if (item.product_name) itemNames.add(item.product_name);
+
+      // Extract styles
+      if (item.style) styles.add(item.style);
+
+      // Extract brands (using color as brand)
+      if (item.color) brands.add(item.color);
+    });
+
+    setAvailableFilters({
+      months: Array.from(months).sort((a, b) => {
+        // Sort months chronologically (most recent first)
+        const dateA = new Date(a);
+        const dateB = new Date(b);
+        return dateB - dateA;
+      }),
+      categories: Array.from(categories).sort(),
+      itemNames: Array.from(itemNames).sort(),
+      styles: Array.from(styles).sort(),
+      brands: Array.from(brands).sort()
+    });
+  };
+
+  // Calculate date range for month filters (same as AdminDashboard)
+  const getMonthDateRange = (filter) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    switch (filter) {
+      case 'last_month':
+        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+        return {
+          start: lastMonth.toISOString().split('T')[0],
+          end: lastMonthEnd.toISOString().split('T')[0]
+        };
+
+      case 'last_2_months':
+        const twoMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+        const lastMonthEnd2 = new Date(today.getFullYear(), today.getMonth(), 0);
+        return {
+          start: twoMonthsAgo.toISOString().split('T')[0],
+          end: lastMonthEnd2.toISOString().split('T')[0]
+        };
+
+      case 'last_3_months':
+        const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+        const lastMonthEnd3 = new Date(today.getFullYear(), today.getMonth(), 0);
+        return {
+          start: threeMonthsAgo.toISOString().split('T')[0],
+          end: lastMonthEnd3.toISOString().split('T')[0]
+        };
+
+      case 'last_6_months':
+        const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, 1);
+        const lastMonthEnd6 = new Date(today.getFullYear(), today.getMonth(), 0);
+        return {
+          start: sixMonthsAgo.toISOString().split('T')[0],
+          end: lastMonthEnd6.toISOString().split('T')[0]
+        };
+
+      default:
+        return null;
+    }
   };
 
   const closeProductPopup = () => {
@@ -182,7 +296,9 @@ export function AdminPoDetail() {
     try {
       setIsProcessing(true);
       await api.admin.updatePoPriority(id, priority);
-      setPo({ ...po, priority });
+      // Reload PO data to get the updated status from server
+      const updatedPo = await api.admin.getPoById(id);
+      setPo(updatedPo);
       setEditingPoPriority(false);
       showSuccess('PO priority updated successfully!');
     } catch (err) {
@@ -197,12 +313,9 @@ export function AdminPoDetail() {
     try {
       setIsProcessing(true);
       await api.admin.updateLineItemPriority(id, lineItemId, priority);
-      setPo({
-        ...po,
-        line_items: po.line_items.map(item =>
-          item.id === lineItemId ? { ...item, line_priority: priority } : item
-        )
-      });
+      // Reload PO data to get the updated status from server
+      const updatedPo = await api.admin.getPoById(id);
+      setPo(updatedPo);
       setEditingLineItem(null);
       showSuccess('Line item priority updated successfully!');
     } catch (err) {
@@ -216,7 +329,31 @@ export function AdminPoDetail() {
   const filteredLineItems = po?.line_items?.filter(item => {
     const statusMatch = lineItemFilters.status === 'ALL' || item.status === lineItemFilters.status;
     const priorityMatch = lineItemFilters.priority === 'ALL' || item.line_priority === lineItemFilters.priority;
-    return statusMatch && priorityMatch;
+
+    // Month filter
+    let monthMatch = true;
+    if (lineItemFilters.month !== 'ALL' && lineItemFilters.month !== '' && item.created_at) {
+      const dateRange = getMonthDateRange(lineItemFilters.month);
+      if (dateRange) {
+        const itemDate = new Date(item.created_at).toISOString().split('T')[0];
+        monthMatch = itemDate >= dateRange.start && itemDate <= dateRange.end;
+      }
+    }
+
+    // Category filter (using region)
+    const categoryMatch = lineItemFilters.category === 'ALL' || item.region === lineItemFilters.category;
+
+    // Item Name filter
+    const itemNameMatch = lineItemFilters.itemName === '' ||
+      item.product_name?.toLowerCase().includes(lineItemFilters.itemName.toLowerCase());
+
+    // Style filter
+    const styleMatch = lineItemFilters.style === 'ALL' || item.style === lineItemFilters.style;
+
+    // Brand filter (using color)
+    const brandMatch = lineItemFilters.brand === 'ALL' || item.color === lineItemFilters.brand;
+
+    return statusMatch && priorityMatch && monthMatch && categoryMatch && itemNameMatch && styleMatch && brandMatch;
   }) || [];
 
   const totalLineItems = filteredLineItems.length;
@@ -442,12 +579,14 @@ export function AdminPoDetail() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Line Items</h2>
 
           <div className="flex gap-4 mb-4 justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Filter className="w-4 h-4 text-gray-400" />
+
+              {/* Status Filter */}
               <select
                 value={lineItemFilters.status}
                 onChange={(e) => setLineItemFilters({ ...lineItemFilters, status: e.target.value })}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
               >
                 <option value="ALL">All Statuses</option>
                 <option value="Cancelled">Cancelled</option>
@@ -457,6 +596,7 @@ export function AdminPoDetail() {
                 <option value="Writeoff done">Writeoff done</option>
               </select>
 
+              {/* Priority Filter */}
               <select
                 value={lineItemFilters.priority}
                 onChange={(e) => setLineItemFilters({ ...lineItemFilters, priority: e.target.value })}
@@ -468,10 +608,136 @@ export function AdminPoDetail() {
                 <option value="HIGH">High</option>
                 <option value="URGENT">Urgent</option>
               </select>
+
+              {/* Month Filter */}
+              <div className="relative" ref={monthDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowMonthDropdown(!showMonthDropdown)}
+                  className="ml-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 min-w-[150px] text-left bg-white"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">
+                      {lineItemFilters.month === 'ALL' || lineItemFilters.month === '' ? 'Select period...' :
+                        lineItemFilters.month === 'last_month' ? 'Last Month' :
+                          lineItemFilters.month === 'last_2_months' ? 'Last 2 Months' :
+                            lineItemFilters.month === 'last_3_months' ? 'Last 3 Months' :
+                              lineItemFilters.month === 'last_6_months' ? 'Last 6 Months' :
+                                lineItemFilters.month}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  </div>
+                </button>
+
+                {showMonthDropdown && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                    <div className="p-2">
+                      <div
+                        onClick={() => {
+                          setLineItemFilters({ ...lineItemFilters, month: 'ALL' });
+                          setShowMonthDropdown(false);
+                        }}
+                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
+                      >
+                        All Periods
+                      </div>
+                      <div
+                        onClick={() => {
+                          setLineItemFilters({ ...lineItemFilters, month: 'last_month' });
+                          setShowMonthDropdown(false);
+                        }}
+                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
+                      >
+                        Last Month
+                      </div>
+                      <div
+                        onClick={() => {
+                          setLineItemFilters({ ...lineItemFilters, month: 'last_2_months' });
+                          setShowMonthDropdown(false);
+                        }}
+                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
+                      >
+                        Last 2 Months
+                      </div>
+                      <div
+                        onClick={() => {
+                          setLineItemFilters({ ...lineItemFilters, month: 'last_3_months' });
+                          setShowMonthDropdown(false);
+                        }}
+                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
+                      >
+                        Last 3 Months
+                      </div>
+                      <div
+                        onClick={() => {
+                          setLineItemFilters({ ...lineItemFilters, month: 'last_6_months' });
+                          setShowMonthDropdown(false);
+                        }}
+                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
+                      >
+                        Last 6 Months
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Category Filter */}
+              <select
+                value={lineItemFilters.category}
+                onChange={(e) => setLineItemFilters({ ...lineItemFilters, category: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+              >
+                <option value="ALL">All Categories</option>
+                {availableFilters.categories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+
+              {/* Item Name Filter */}
+              <input
+                type="text"
+                placeholder="Search item name..."
+                value={lineItemFilters.itemName}
+                onChange={(e) => setLineItemFilters({ ...lineItemFilters, itemName: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 w-48"
+              />
+
+              {/* Style Filter */}
+              <select
+                value={lineItemFilters.style}
+                onChange={(e) => setLineItemFilters({ ...lineItemFilters, style: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+              >
+                <option value="ALL">All Styles</option>
+                {availableFilters.styles.map(style => (
+                  <option key={style} value={style}>{style}</option>
+                ))}
+              </select>
+
+              {/* Brand Filter */}
+              <select
+                value={lineItemFilters.brand}
+                onChange={(e) => setLineItemFilters({ ...lineItemFilters, brand: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+              >
+                <option value="ALL">All Brands</option>
+                {availableFilters.brands.map(brand => (
+                  <option key={brand} value={brand}>{brand}</option>
+                ))}
+              </select>
             </div>
 
             <button onClick={() => {
-              setLineItemFilters({ status: 'ALL', priority: 'ALL' });
+              setLineItemFilters({
+                status: 'ALL',
+                priority: 'ALL',
+                month: 'ALL',
+                category: 'ALL',
+                itemName: '',
+                style: 'ALL',
+                brand: 'ALL'
+              });
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 
@@ -484,16 +750,14 @@ export function AdminPoDetail() {
                   <TableHeader columnName="product_name">Product Name</TableHeader>
                   <TableHeader columnName="style">Style</TableHeader>
                   <TableHeader columnName="sub_style">Sub-Style</TableHeader>
-                  <TableHeader columnName="region">Region</TableHeader>
                   <TableHeader columnName="color">Color</TableHeader>
                   <TableHeader columnName="sub_color">Sub-Color</TableHeader>
                   <TableHeader columnName="polish">Polish</TableHeader>
                   <TableHeader columnName="size">Size</TableHeader>
                   <TableHeader columnName="weight">Weight</TableHeader>
-                  <TableHeader columnName="quantity">Quantity</TableHeader>
+                  <TableHeader columnName="quantity">Order Qty</TableHeader>
                   <TableHeader columnName="received_qty">Delivered Qty</TableHeader>
                   <TableHeader columnName="pending_qty">Pending Qty</TableHeader>
-                  <TableHeader columnName="gst_percent">GST%</TableHeader>
                   <TableHeader columnName="price">Price</TableHeader>
                   <TableHeader columnName="mrp">MRP</TableHeader>
                   <TableHeader columnName="expected_delivery_date">Expected Date</TableHeader>
@@ -513,7 +777,6 @@ export function AdminPoDetail() {
                     <TableCell value={item.product_name} columnName="product_name" />
                     <TableCell value={item.style} columnName="style" />
                     <TableCell value={item.sub_style} columnName="sub_style" />
-                    <TableCell value={item.region} columnName="region" />
                     <TableCell value={item.color} columnName="color" />
                     <TableCell value={item.sub_color} columnName="sub_color" />
                     <TableCell value={item.polish} columnName="polish" />
@@ -522,7 +785,6 @@ export function AdminPoDetail() {
                     <TableCell value={item.quantity} columnName="quantity" />
                     <TableCell value={item.received_qty || 0} columnName="received_qty" />
                     <TableCell value={(item.quantity || 0) - (item.received_qty || 0)} columnName="pending_qty" />
-                    <TableCell value={item.gst_percent} columnName="gst_percent" />
                     <TableCell value={item.price} columnName="price" type="currency" />
                     <TableCell value={item.mrp} columnName="mrp" type="currency" />
                     <TableCell value={item.expected_delivery_date} columnName="expected_delivery_date" type="date" />

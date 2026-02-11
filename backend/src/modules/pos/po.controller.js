@@ -6,9 +6,38 @@ export async function getPosAdmin(req, res, next) {
     const filters = {};
 
     if (req.query.vendor_id) filters.vendor_id = req.query.vendor_id;
-    if (req.query.status) filters.status = req.query.status;
+    if (req.query.status) {
+      // Handle comma-separated status values for multiple selection
+      // Decode URL-encoded values first
+      let decodedStatus = req.query.status;
+
+      // Handle both URL-encoded and regular comma-separated values
+      if (typeof decodedStatus === "string") {
+        decodedStatus = decodeURIComponent(decodedStatus);
+
+        // Split on comma and trim whitespace
+        if (decodedStatus.includes(",")) {
+          filters.status = decodedStatus
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
+        } else {
+          filters.status = [decodedStatus.trim()];
+        }
+      } else if (Array.isArray(decodedStatus)) {
+        // If Express already parsed it as array (multiple status parameters)
+        filters.status = decodedStatus
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+      }
+    }
     if (req.query.priority) filters.priority = req.query.priority;
     if (req.query.type) filters.type = req.query.type;
+
+    // Add 6-month filter by default
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    filters.created_after = sixMonthsAgo.toISOString().split("T")[0];
 
     // Add pagination parameters
     const page = parseInt(req.query.page) || 1;

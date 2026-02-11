@@ -5,11 +5,20 @@ export async function getAdminLineItems(req, res, next) {
     const { status, priority, vendor_id, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
+    // Decode URL-encoded status parameter
+    const decodedStatus = status ? decodeURIComponent(status) : status;
+
     const params = [];
     let paramNum = 1;
     const conditions = [];
 
     const today = new Date().toISOString().split("T")[0];
+
+    // Add 6-month filter by default
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    conditions.push(`po.po_date >= $${paramNum++}`);
+    params.push(sixMonthsAgo.toISOString().split("T")[0]);
 
     // Apply vendor filter
     if (vendor_id && vendor_id !== "ALL") {
@@ -18,15 +27,15 @@ export async function getAdminLineItems(req, res, next) {
     }
 
     // Apply status filter
-    if (status && status !== "ALL") {
-      if (status === "DELAYED") {
+    if (decodedStatus && decodedStatus !== "ALL") {
+      if (decodedStatus === "DELAYED") {
         conditions.push(`poli.expected_delivery_date < $${paramNum++}`);
         params.push(today);
         conditions.push(`poli.status != $${paramNum++}`);
         params.push("DELIVERED");
       } else {
         conditions.push(`poli.status = $${paramNum++}`);
-        params.push(status);
+        params.push(decodedStatus);
       }
     }
 
@@ -110,15 +119,15 @@ export async function getVendorLineItems(req, res, next) {
     params.push(vendor_id);
 
     // Apply status filter
-    if (status && status !== "ALL") {
-      if (status === "DELAYED") {
+    if (decodedStatus && decodedStatus !== "ALL") {
+      if (decodedStatus === "DELAYED") {
         conditions.push(`poli.expected_delivery_date < $${paramNum++}`);
         params.push(today);
         conditions.push(`poli.status != $${paramNum++}`);
         params.push("DELIVERED");
       } else {
         conditions.push(`poli.status = $${paramNum++}`);
-        params.push(status);
+        params.push(decodedStatus);
       }
     }
 

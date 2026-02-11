@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package } from 'lucide-react';
+import { Package, ChevronDown } from 'lucide-react';
 import { Layout } from '../../components/Layout';
 import { TableCell, TableHeader } from '../../components/TableComponents';
 import { formatDate, formatPrice, formatCurrency } from '../../utils/formatters';
@@ -17,11 +17,14 @@ export function AdminLineItems() {
   const [vendors, setVendors] = useState([]);
   const [vendorSearchTerm, setVendorSearchTerm] = useState('');
   const [showVendorDropdown, setShowVendorDropdown] = useState(false);
+  const [showMonthDropdown, setShowMonthDropdown] = useState(false);
   const vendorDropdownRef = useRef(null);
+  const monthDropdownRef = useRef(null);
   const [filters, setFilters] = useState({
     status: 'ALL',
     priority: 'ALL',
     vendor_id: 'ALL',
+    month: 'ALL',
   });
   const { sortedData, requestSort, getSortIcon } = useSortableTable(lineItems);
 
@@ -37,6 +40,10 @@ export function AdminLineItems() {
     const handleClickOutside = (event) => {
       if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target)) {
         setShowVendorDropdown(false);
+      }
+      // Close month dropdown when clicking outside
+      if (monthDropdownRef.current && !monthDropdownRef.current.contains(event.target)) {
+        setShowMonthDropdown(false);
       }
     };
 
@@ -85,13 +92,65 @@ export function AdminLineItems() {
     setShowVendorDropdown(true);
   };
 
+  // Calculate date range for month filters (same as AdminPoDetails)
+  const getMonthDateRange = (filter) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    switch (filter) {
+      case 'last_month':
+        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+        return {
+          start: lastMonth.toISOString().split('T')[0],
+          end: lastMonthEnd.toISOString().split('T')[0]
+        };
+
+      case 'last_2_months':
+        const twoMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+        const lastMonthEnd2 = new Date(today.getFullYear(), today.getMonth(), 0);
+        return {
+          start: twoMonthsAgo.toISOString().split('T')[0],
+          end: lastMonthEnd2.toISOString().split('T')[0]
+        };
+
+      case 'last_3_months':
+        const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+        const lastMonthEnd3 = new Date(today.getFullYear(), today.getMonth(), 0);
+        return {
+          start: threeMonthsAgo.toISOString().split('T')[0],
+          end: lastMonthEnd3.toISOString().split('T')[0]
+        };
+
+      case 'last_6_months':
+        const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, 1);
+        const lastMonthEnd6 = new Date(today.getFullYear(), today.getMonth(), 0);
+        return {
+          start: sixMonthsAgo.toISOString().split('T')[0],
+          end: lastMonthEnd6.toISOString().split('T')[0]
+        };
+
+      default:
+        return null;
+    }
+  };
+
   const fetchLineItems = async () => {
     try {
       setLoading(true);
       const params = {};
-      if (filters.status !== 'ALL') params.status = filters.status;
+      if (filters.status && filters.status !== 'ALL') params.status = filters.status;
       if (filters.priority !== 'ALL') params.priority = filters.priority;
       if (filters.vendor_id !== 'ALL') params.vendor_id = filters.vendor_id;
+
+      // Add month filter date range
+      if (filters.month && filters.month !== 'ALL') {
+        const dateRange = getMonthDateRange(filters.month);
+        if (dateRange) {
+          params.start_date = dateRange.start;
+          params.end_date = dateRange.end;
+        }
+      }
 
       params.page = page;
       params.limit = pageSize;
@@ -167,6 +226,8 @@ export function AdminLineItems() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
                 >
                   <option value="ALL">All Statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Partially Purchased">Partially Purchased</option>
                   <option value="CREATED">Created</option>
                   <option value="ACCEPTED">Accepted</option>
                   <option value="PLANNED">Planned</option>
@@ -233,11 +294,87 @@ export function AdminLineItems() {
                   </div>
                 )}
               </div>
+              {/* Month Filter */}
+              <div className="relative" ref={monthDropdownRef}>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Period
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowMonthDropdown(!showMonthDropdown)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 min-w-[150px] text-left bg-white"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">
+                      {filters.month === 'ALL' || filters.month === '' ? 'Select period...' :
+                        filters.month === 'last_month' ? 'Last Month' :
+                          filters.month === 'last_2_months' ? 'Last 2 Months' :
+                            filters.month === 'last_3_months' ? 'Last 3 Months' :
+                              filters.month === 'last_6_months' ? 'Last 6 Months' :
+                                filters.month}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  </div>
+                </button>
+
+                {showMonthDropdown && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                    <div className="p-2">
+                      <div
+                        onClick={() => {
+                          updateFilters({ ...filters, month: 'ALL' });
+                          setShowMonthDropdown(false);
+                        }}
+                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
+                      >
+                        All Periods
+                      </div>
+                      <div
+                        onClick={() => {
+                          updateFilters({ ...filters, month: 'last_month' });
+                          setShowMonthDropdown(false);
+                        }}
+                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
+                      >
+                        Last Month
+                      </div>
+                      <div
+                        onClick={() => {
+                          updateFilters({ ...filters, month: 'last_2_months' });
+                          setShowMonthDropdown(false);
+                        }}
+                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
+                      >
+                        Last 2 Months
+                      </div>
+                      <div
+                        onClick={() => {
+                          updateFilters({ ...filters, month: 'last_3_months' });
+                          setShowMonthDropdown(false);
+                        }}
+                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
+                      >
+                        Last 3 Months
+                      </div>
+                      <div
+                        onClick={() => {
+                          updateFilters({ ...filters, month: 'last_6_months' });
+                          setShowMonthDropdown(false);
+                        }}
+                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
+                      >
+                        Last 6 Months
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <button onClick={() => {
-              updateFilters({ status: 'ALL', priority: 'ALL', vendor_id: 'ALL' });
+              updateFilters({ status: 'ALL', priority: 'ALL', vendor_id: 'ALL', month: 'ALL' });
               setVendorSearchTerm('');
               setShowVendorDropdown(false);
+              setShowMonthDropdown(false);
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 

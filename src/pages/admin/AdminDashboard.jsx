@@ -6,7 +6,7 @@ import { formatDate, formatPrice, formatCurrency } from '../../utils/formatters'
 import { api } from '../../config/api';
 import { Toast, useToast } from '../../components/Toast';
 import { useSortableTable } from '../../hooks/useSortableTable';
-import { Package, Filter, Eye, AlertCircle, Clock, CheckCircle, TrendingUp } from 'lucide-react';
+import { Package, Filter, Eye, AlertCircle, Clock, CheckCircle, TrendingUp, ChevronDown } from 'lucide-react';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 // const STATUSES = ['CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED'];
@@ -35,7 +35,7 @@ export function AdminDashboard() {
   const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(['Pending']);
   const [priorityFilter, setPriorityFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [vendorFilter, setVendorFilter] = useState('');
@@ -45,6 +45,7 @@ export function AdminDashboard() {
   const [loadingStats, setLoadingStats] = useState(true);
   const [vendorSearchTerm, setVendorSearchTerm] = useState('');
   const [showVendorDropdown, setShowVendorDropdown] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const vendorDropdownRef = useRef(null);
 
 
@@ -60,6 +61,10 @@ export function AdminDashboard() {
     const handleClickOutside = (event) => {
       if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target)) {
         setShowVendorDropdown(false);
+      }
+      // Close status dropdown when clicking outside
+      if (!event.target.closest('.status-dropdown-container')) {
+        setShowStatusDropdown(false);
       }
     };
 
@@ -104,6 +109,55 @@ export function AdminDashboard() {
     setVendorFilter(nextFilters.vendor_id);
   };
 
+  // Check if PO is overdue (po_date + 60 days OR expected_delivery_date < current date)
+  const isPoOverdue = (po) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+
+    // Check if PO date + 60 days has passed
+    let poDatePlus60Days = null;
+    if (po.po_date) {
+      let poDateObj;
+
+      // Handle PostgreSQL date format (YYYY-MM-DD)
+      if (typeof po.po_date === 'string' && po.po_date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = po.po_date.split('-').map(Number);
+        poDateObj = new Date(year, month - 1, day);
+      } else {
+        poDateObj = new Date(po.po_date);
+      }
+
+      if (!isNaN(poDateObj.getTime())) {
+        poDatePlus60Days = new Date(poDateObj);
+        poDatePlus60Days.setDate(poDatePlus60Days.getDate() + 60);
+      }
+    }
+
+    // Check if expected delivery date has passed
+    let expectedDatePassed = false;
+    if (po.expected_delivery_date) {
+      let expectedDateObj;
+
+      // Handle PostgreSQL date format (YYYY-MM-DD)
+      if (typeof po.expected_delivery_date === 'string' && po.expected_delivery_date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = po.expected_delivery_date.split('-').map(Number);
+        expectedDateObj = new Date(year, month - 1, day);
+      } else {
+        expectedDateObj = new Date(po.expected_delivery_date);
+      }
+
+      if (!isNaN(expectedDateObj.getTime())) {
+        expectedDateObj.setHours(0, 0, 0, 0);
+        expectedDatePassed = expectedDateObj < today;
+      }
+    }
+
+    // Overdue if PO date + 60 days has passed OR expected delivery date has passed
+    const poDateOverdue = poDatePlus60Days ? poDatePlus60Days < today : false;
+
+    return poDateOverdue || expectedDatePassed;
+  };
+
   const getFilteredVendors = () => {
     if (!vendorSearchTerm) return vendors;
     return vendors.filter(vendor =>
@@ -139,7 +193,7 @@ export function AdminDashboard() {
     try {
       setLoading(true);
       const params = {};
-      if (statusFilter) params.status = statusFilter;
+      if (statusFilter && statusFilter.length > 0) params.status = statusFilter.join(',');
       if (priorityFilter) params.priority = priorityFilter;
       if (typeFilter) params.type = typeFilter;
       if (vendorFilter) params.vendor_id = vendorFilter;
@@ -292,16 +346,79 @@ export function AdminDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4 flex-wrap gap-2">
               <Filter className="w-5 h-5 text-gray-400" />
-              <select
-                value={statusFilter}
-                onChange={(e) => updateFilters({ ...{ status: e.target.value, priority: priorityFilter, type: typeFilter, vendor_id: vendorFilter } })}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
-              >
-                <option value="">All Statuses</option>
-                {STATUSES.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">Status:</span>
+                <div className="relative status-dropdown-container">
+                  <button
+                    type="button"
+                    onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 min-w-[150px] text-left bg-white"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">
+                        {statusFilter.length === 0 ? 'Select statuses...' :
+                          statusFilter.length === 1 ? statusFilter[0] :
+                            `${statusFilter.length} statuses selected`}
+                      </span>
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
+                    </div>
+                  </button>
+
+                  {showStatusDropdown && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                      <div className="p-2">
+                        <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={statusFilter.includes('Pending')}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setStatusFilter([...statusFilter, 'Pending']);
+                              } else {
+                                setStatusFilter(statusFilter.filter(s => s !== 'Pending'));
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm">Pending</span>
+                        </label>
+                        <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={statusFilter.includes('Partially Purchased')}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setStatusFilter([...statusFilter, 'Partially Purchased']);
+                              } else {
+                                setStatusFilter(statusFilter.filter(s => s !== 'Partially Purchased'));
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm">Partially Purchased</span>
+                        </label>
+                        {STATUSES.filter(status => !['Pending', 'Partially Purchased'].includes(status)).map(status => (
+                          <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={statusFilter.includes(status)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setStatusFilter([...statusFilter, status]);
+                                } else {
+                                  setStatusFilter(statusFilter.filter(s => s !== status));
+                                }
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm">{status}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
               <select
                 value={priorityFilter}
                 onChange={(e) => updateFilters({ ...{ status: statusFilter, priority: e.target.value, type: typeFilter, vendor_id: vendorFilter } })}
@@ -353,7 +470,10 @@ export function AdminDashboard() {
               </div>
             </div>
             <button onClick={() => {
-              updateFilters({ status: '', priority: '', type: '', vendor_id: '' });
+              setStatusFilter(['Pending']);
+              setPriorityFilter('');
+              setTypeFilter('');
+              setVendorFilter('');
               setVendorSearchTerm('');
               setShowVendorDropdown(false);
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
@@ -394,36 +514,40 @@ export function AdminDashboard() {
                       </td>
                     </tr>
                   ) : (
-                    pos.map(po => (
-                      <tr key={po.id} className="hover:bg-gray-50 transition-colors">
-                        <TableCell value={po.po_number} columnName="po_number" />
-                        <TableCell value={po.po_date} columnName="po_date" type="date" />
-                        <TableCell value={po.vendor?.name || 'N/A'} columnName="vendor" />
-                        <TableCell value={po.type.replace('_', ' ')} columnName="type" />
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[po.priority]}`}>
-                            {po.priority}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[po.status]}`}>
-                            {po.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {po.line_items_count}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <button
-                            onClick={() => navigate(`/admin/pos/${po.id}`)}
-                            className="text-blue-600 hover:text-blue-800 font-medium flex items-center space-x-1"
-                          >
-                            <Eye className="w-4 h-4" />
-                            <span>View</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    pos.map(po => {
+                      const overdue = isPoOverdue(po);
+                      return (
+                        <tr key={po.id} className={`hover:bg-gray-50 transition-colors ${overdue ? 'bg-red-50' : ''}`}>
+                          <TableCell value={po.po_number} columnName="po_number" />
+                          <TableCell value={po.po_date} columnName="po_date" type="date" />
+                          <TableCell value={po.vendor?.name || 'N/A'} columnName="vendor" />
+                          <TableCell value={po.type.replace('_', ' ')} columnName="type" />
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[po.priority]}`}>
+                              {po.priority}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[po.status]}`}>
+                              {po.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {po.line_items_count}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <button
+                              onClick={() => navigate(`/admin/pos/${po.id}`)}
+                              className={`font-medium flex items-center space-x-1 ${overdue ? 'text-red-600 hover:text-red-800' : 'text-blue-600 hover:text-blue-800'
+                                }`}
+                            >
+                              <Eye className="w-4 h-4" />
+                              <span>View</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

@@ -34,6 +34,8 @@ export function VendorPoDetail() {
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [editingPoExpectedDate, setEditingPoExpectedDate] = useState(false);
+  const [tempPoExpectedDate, setTempPoExpectedDate] = useState('');
   const [acceptDates, setAcceptDates] = useState({});
   const [showAcceptForm, setShowAcceptForm] = useState(false);
   const [history, setHistory] = useState([]);
@@ -183,6 +185,15 @@ export function VendorPoDetail() {
     }
   };
 
+  const handleSetCommonExpectedDate = (date) => {
+    // Set the same expected date for all line items
+    const updatedDates = {};
+    po.line_items.forEach(item => {
+      updatedDates[item.id] = date;
+    });
+    setAcceptDates(updatedDates);
+  };
+
   const handleAcceptPo = async () => {
     try {
       setIsProcessing(true);
@@ -204,6 +215,32 @@ export function VendorPoDetail() {
       await loadPo();
       setShowAcceptForm(false);
       setError('');
+    } catch (err) {
+      showError(err.message);
+      setError(err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleUpdatePoExpectedDate = async (newDate) => {
+    try {
+      setIsProcessing(true);
+
+      // Update all line items with the new expected date
+      const updatePromises = po.line_items.map(item =>
+        api.vendor.updateLineItemExpectedDate(id, item.id, newDate)
+      );
+
+      await Promise.all(updatePromises);
+
+      // Reload PO data to get updated state
+      await loadPo();
+
+      setEditingPoExpectedDate(false);
+      setTempPoExpectedDate('');
+      setError('');
+      showSuccess('Expected date updated for all line items successfully!');
     } catch (err) {
       showError(err.message);
       setError(err.message);
@@ -420,6 +457,51 @@ export function VendorPoDetail() {
                     {po.priority}
                   </span>
                 </div>
+
+                <div className='flex items-center gap-x-3'>
+                  <label className="text-sm text-gray-500">Expected Date :</label>
+                  {editingPoExpectedDate ? (
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="date"
+                        value={tempPoExpectedDate}
+                        onChange={(e) => setTempPoExpectedDate(e.target.value)}
+                        className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-300"
+                      />
+                      <button
+                        onClick={() => handleUpdatePoExpectedDate(tempPoExpectedDate)}
+                        disabled={!tempPoExpectedDate}
+                        className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingPoExpectedDate(false);
+                          setTempPoExpectedDate('');
+                        }}
+                        className="px-2 py-1 text-xs text-gray-600 hover:text-gray-900"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <p className="text-gray-900 font-medium text-sm">
+                        {po.line_items?.[0]?.expected_delivery_date ? formatDate(po.line_items[0].expected_delivery_date) : 'Not set'}
+                      </p>
+                      <button
+                        onClick={() => {
+                          setEditingPoExpectedDate(true);
+                          setTempPoExpectedDate(po.line_items?.[0]?.expected_delivery_date || '');
+                        }}
+                        className="text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="">
                 <div className='flex items-center gap-x-3'>
@@ -468,6 +550,24 @@ export function VendorPoDetail() {
             <p className="text-sm text-gray-600 mb-4">
               Please provide expected delivery dates for all line items to accept this PO.
             </p>
+
+            {/* Common Expected Date Section */}
+            <div className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">Set Common Expected Date</h4>
+              <div className="flex items-center space-x-3">
+                <input
+                  type="date"
+                  placeholder="Set common date for all items"
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleSetCommonExpectedDate(e.target.value);
+                    }
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+                />
+                <span className="text-xs text-gray-500">This will set the same date for all line items</span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -513,19 +613,15 @@ export function VendorPoDetail() {
                   <TableHeader columnName="combination_code">Combination Code</TableHeader>
                   <TableHeader columnName="product_name">Product Name</TableHeader>
                   <TableHeader columnName="style">Style</TableHeader>
-                  <TableHeader columnName="sub_style">Sub-Style</TableHeader>
-                  <TableHeader columnName="region">Region</TableHeader>
                   <TableHeader columnName="color">Color</TableHeader>
                   <TableHeader columnName="sub_color">Sub-Color</TableHeader>
                   <TableHeader columnName="polish">Polish</TableHeader>
                   <TableHeader columnName="size">Size</TableHeader>
                   <TableHeader columnName="weight">Weight</TableHeader>
-                  <TableHeader columnName="quantity">Quantity</TableHeader>
+                  <TableHeader columnName="quantity">Order Qty</TableHeader>
                   <TableHeader columnName="received_qty">Delivered Qty</TableHeader>
                   <TableHeader columnName="pending_qty">Pending Qty</TableHeader>
-                  <TableHeader columnName="gst_percent">GST%</TableHeader>
                   <TableHeader columnName="price">Price</TableHeader>
-                  <TableHeader columnName="mrp">MRP</TableHeader>
                   <TableHeader columnName="expected_delivery_date">Expected Date</TableHeader>
                   <TableHeader columnName="status">Status</TableHeader>
                   <TableHeader columnName="priority">Priority</TableHeader>
@@ -550,8 +646,6 @@ export function VendorPoDetail() {
                     />
                     <TableCell value={item.product_name} columnName="product_name" />
                     <TableCell value={item.style} columnName="style" />
-                    <TableCell value={item.sub_style} columnName="sub_style" />
-                    <TableCell value={item.region} columnName="region" />
                     <TableCell value={item.color} columnName="color" />
                     <TableCell value={item.sub_color} columnName="sub_color" />
                     <TableCell value={item.polish} columnName="polish" />
@@ -560,9 +654,7 @@ export function VendorPoDetail() {
                     <TableCell value={item.quantity} columnName="quantity" />
                     <TableCell value={item.received_qty || 0} columnName="received_qty" />
                     <TableCell value={(item.quantity || 0) - (item.received_qty || 0)} columnName="pending_qty" />
-                    <TableCell value={item.gst_percent} columnName="gst_percent" />
                     <TableCell value={item.price} columnName="price" type="currency" />
-                    <TableCell value={item.mrp} columnName="mrp" type="currency" />
                     <td className="px-4 py-3 text-sm">
                       {showAcceptForm || (item.status !== 'DELIVERED' && item.status !== 'CREATED') ? (
                         <div className="flex items-center gap-2">

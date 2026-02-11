@@ -10,7 +10,24 @@
 export function formatDate(date) {
   if (!date) return "-";
 
-  const dateObj = new Date(date);
+  let dateObj;
+
+  // Handle different date formats
+  if (typeof date === "string") {
+    // If it's a date string from PostgreSQL (YYYY-MM-DD), handle it properly
+    if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // Split the date to avoid timezone issues
+      const [year, month, day] = date.split("-").map(Number);
+      dateObj = new Date(year, month - 1, day); // month is 0-indexed in JS
+    } else {
+      // For other date strings, use the regular constructor
+      dateObj = new Date(date);
+    }
+  } else {
+    // For Date objects or other types
+    dateObj = new Date(date);
+  }
+
   if (isNaN(dateObj.getTime())) return "-";
 
   const day = dateObj.getDate().toString().padStart(2, "0");

@@ -33,8 +33,20 @@ export async function findAll(filters = {}, limit = null, offset = null) {
   }
 
   if (filters.status) {
-    conditions.push(`po.status = $${paramNum++}`);
-    params.push(filters.status);
+    // Ensure status is always an array
+    const statusArray = Array.isArray(filters.status)
+      ? filters.status
+      : [filters.status];
+    const validStatuses = statusArray.filter((s) => s && s.length > 0);
+
+    if (validStatuses.length === 1) {
+      conditions.push(`po.status = $${paramNum++}`);
+      params.push(validStatuses[0]);
+    } else if (validStatuses.length > 1) {
+      const statusParams = validStatuses.map(() => `$${paramNum++}`);
+      conditions.push(`po.status IN (${statusParams.join(", ")})`);
+      params.push(...validStatuses);
+    }
   }
 
   if (filters.priority) {
@@ -45,6 +57,11 @@ export async function findAll(filters = {}, limit = null, offset = null) {
   if (filters.type) {
     conditions.push(`po.type = $${paramNum++}`);
     params.push(filters.type);
+  }
+
+  if (filters.created_after) {
+    conditions.push(`po.po_date >= $${paramNum++}`);
+    params.push(filters.created_after);
   }
 
   if (conditions.length > 0) {
