@@ -7,7 +7,7 @@ import { TableCell, TableHeader } from '../../components/TableComponents';
 import { ProductPopup } from '../../components/ProductPopup';
 import { formatDate, formatPrice, formatCurrency } from '../../utils/formatters';
 import { api } from '../../config/api';
-import { ArrowLeft, Package, Building, CheckCircle, Calendar, History, X, Filter, Download, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Package, Building, CheckCircle, Calendar, History, X, Filter, Download, ChevronDown, List, LayoutGrid } from 'lucide-react';
 
 const STATUSES = ['ACCEPTED', 'PLANNED', 'DELIVERED'];
 
@@ -48,6 +48,7 @@ export function VendorPoDetail() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showProductPopup, setShowProductPopup] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'tiles'
 
   useEffect(() => {
     loadPo();
@@ -328,6 +329,67 @@ export function VendorPoDetail() {
     return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   };
 
+  const TileComponent = ({ item }) => {
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [imageError, setImageError] = useState(false);
+
+    const imageUrl = parseInt(item.combination_code) 
+      ? `https://kushals-hq-prod.s3.ap-south-1.amazonaws.com/images/${parseInt(item.combination_code)}.jpg`
+      : null;
+
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+        {/* Image Section */}
+        <div className="relative aspect-square bg-gray-100 flex items-center justify-center">
+          {imageUrl && !imageError ? (
+            <img
+              src={imageUrl}
+              alt={item.product_name || 'Product Image'}
+              className={`w-full h-full object-contain transition-opacity ${
+                imageLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="text-gray-400 text-center">
+              <Package className="w-16 h-16 mx-auto mb-2" />
+              <p className="text-sm">No Image</p>
+            </div>
+          )}
+          
+          {/* Top overlay */}
+          <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 to-transparent p-3">
+            <div className="flex justify-between items-start text-white">
+              <div className="text-sm font-medium">
+                {item.design_code || '-'}
+              </div>
+              <div className="text-xs">
+                {po?.created_at ? new Date(po.created_at).toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                }) : '-'}
+              </div>
+            </div>
+          </div>
+          
+          {/* Bottom overlay */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-3">
+            <div className="flex justify-between items-end text-white">
+              <div className="text-sm font-medium">
+                {po?.po_number || '-'}
+              </div>
+              <div className="text-xs">
+                Qty: {item.quantity || 0}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <Layout role="vendor">
@@ -572,7 +634,35 @@ export function VendorPoDetail() {
         )}
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 mt-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Line Items</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Line Items</h2>
+            
+            {/* View Toggle */}
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                  viewMode === 'list'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <List className="w-4 h-4" />
+                List
+              </button>
+              <button
+                onClick={() => setViewMode('tiles')}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                  viewMode === 'tiles'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Tiles
+              </button>
+            </div>
+          </div>
 
           <div className="flex gap-4 mb-4 items-center justify-between">
             <div className="flex items-center gap-2">
@@ -605,9 +695,10 @@ export function VendorPoDetail() {
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 
-          <div className="overflow-x-auto overflow-scroll">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+          {viewMode === 'list' ? (
+            <div className="overflow-x-auto overflow-scroll">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <TableHeader columnName="design_code">Design Code</TableHeader>
                   <TableHeader columnName="combination_code">Combination Code</TableHeader>
@@ -707,7 +798,21 @@ export function VendorPoDetail() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          ) : (
+            /* Tiles View */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {paginatedLineItems.length === 0 ? (
+                <div className="col-span-full text-center py-8 text-gray-500">
+                  No line items found
+                </div>
+              ) : (
+                paginatedLineItems.map((item) => (
+                  <TileComponent key={item.id} item={item} />
+                ))
+              )}
+            </div>
+          )}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
             <div className="text-sm text-gray-600">
