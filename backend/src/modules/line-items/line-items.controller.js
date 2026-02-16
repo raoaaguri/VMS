@@ -2,7 +2,15 @@ import { query } from "../../config/db.js";
 
 export async function getAdminLineItems(req, res, next) {
   try {
-    const { status, priority, vendor_id, page = 1, limit = 10 } = req.query;
+    const {
+      status,
+      priority,
+      vendor_id,
+      start_date,
+      end_date,
+      page = 1,
+      limit = 10,
+    } = req.query;
     const offset = (page - 1) * limit;
 
     // Decode URL-encoded status parameter
@@ -12,13 +20,20 @@ export async function getAdminLineItems(req, res, next) {
     let paramNum = 1;
     const conditions = [];
 
-    const today = new Date().toISOString().split("T")[0];
-
-    // Add 6-month filter by default
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    conditions.push(`po.po_date >= $${paramNum++}`);
-    params.push(sixMonthsAgo.toISOString().split("T")[0]);
+    // Apply date range filter if provided
+    if (start_date && end_date) {
+      conditions.push(`poli.created_at >= $${paramNum++}`);
+      params.push(start_date);
+      conditions.push(`poli.created_at <= $${paramNum++}`);
+      params.push(end_date);
+    } else {
+      // Add 6-month filter by default only if no date range is specified
+      const today = new Date().toISOString().split("T")[0];
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      conditions.push(`poli.created_at >= $${paramNum++}`);
+      params.push(sixMonthsAgo.toISOString().split("T")[0]);
+    }
 
     // Apply vendor filter
     if (vendor_id && vendor_id !== "ALL") {
@@ -119,7 +134,8 @@ export async function getVendorLineItems(req, res, next) {
     params.push(vendor_id);
 
     // Apply status filter
-    if (decodedStatus && decodedStatus !== "ALL") {
+    if (status && status !== "ALL") {
+      const decodedStatus = decodeURIComponent(status);
       if (decodedStatus === "DELAYED") {
         conditions.push(`poli.expected_delivery_date < $${paramNum++}`);
         params.push(today);
@@ -135,6 +151,12 @@ export async function getVendorLineItems(req, res, next) {
     if (priority && priority !== "ALL") {
       conditions.push(`poli.line_priority = $${paramNum++}`);
       params.push(priority);
+    }
+
+    // Apply item name filter
+    if (req.query.product_name && req.query.product_name.trim() !== "") {
+      conditions.push(`poli.product_name ILIKE $${paramNum++}`);
+      params.push(`%${req.query.product_name.trim()}%`);
     }
 
     const whereClause = ` WHERE ${conditions.join(" AND ")}`;

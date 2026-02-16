@@ -17,6 +17,7 @@ export function VendorLineItems() {
   const [filters, setFilters] = useState({
     status: 'ALL',
     priority: 'ALL',
+    itemName: '',
   });
   const { sortedData, requestSort, getSortIcon } = useSortableTable(lineItems);
 
@@ -35,6 +36,9 @@ export function VendorLineItems() {
       const params = {};
       if (filters.status !== 'ALL') params.status = filters.status;
       if (filters.priority !== 'ALL') params.priority = filters.priority;
+      if (filters.itemName && filters.itemName.trim() !== '') {
+        params.product_name = filters.itemName.trim();
+      }
 
       params.page = page;
       params.limit = pageSize;
@@ -134,9 +138,22 @@ export function VendorLineItems() {
                   <option value="URGENT">Urgent</option>
                 </select>
               </div>
+
+              <div className="">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Item Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Search item name..."
+                  value={filters.itemName}
+                  onChange={(e) => updateFilters({ ...filters, itemName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
             <button onClick={() => {
-              updateFilters({ status: 'ALL', priority: 'ALL' });
+              updateFilters({ status: 'ALL', priority: 'ALL', itemName: '' });
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 

@@ -296,13 +296,15 @@ export function VendorDashboard() {
                         </td>
                         <TableCell value={po.line_items_count} columnName="line_items" />
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <button
-                            onClick={() => navigate(`/vendor/pos/${po.id}`)}
-                            className="text-blue-600 hover:text-blue-800 font-medium flex items-center space-x-1"
-                          >
-                            <Eye className="w-4 h-4" />
-                            <span>View</span>
-                          </button>
+                          <div className="flex items-center justify-center">
+                            <button
+                              onClick={() => navigate(`/vendor/pos/${po.id}`)}
+                              className="text-blue-600 hover:text-blue-800 font-medium flex items-center space-x-1"
+                            >
+                              <Eye className="w-4 h-4" />
+                              <span>View</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))

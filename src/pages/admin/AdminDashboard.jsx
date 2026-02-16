@@ -36,7 +36,6 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState(['Pending']);
-  const [priorityFilter, setPriorityFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [vendorFilter, setVendorFilter] = useState('');
   const [vendors, setVendors] = useState([]);
@@ -55,7 +54,7 @@ export function AdminDashboard() {
     loadPos();
     loadStats();
     loadVendors();
-  }, [statusFilter, priorityFilter, typeFilter, vendorFilter, page, pageSize]);
+  }, [statusFilter, typeFilter, vendorFilter, page, pageSize]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -76,7 +75,7 @@ export function AdminDashboard() {
 
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, priorityFilter, typeFilter, vendorFilter, pageSize]);
+  }, [statusFilter, typeFilter, vendorFilter, pageSize]);
 
   useEffect(() => {
     // Extract types from the loaded PO data
@@ -104,7 +103,6 @@ export function AdminDashboard() {
   const updateFilters = (nextFilters) => {
     setPage(1);
     setStatusFilter(nextFilters.status);
-    setPriorityFilter(nextFilters.priority);
     setTypeFilter(nextFilters.type);
     setVendorFilter(nextFilters.vendor_id);
   };
@@ -171,7 +169,6 @@ export function AdminDashboard() {
     setShowVendorDropdown(false);
     updateFilters({
       status: statusFilter,
-      priority: priorityFilter,
       type: typeFilter,
       vendor_id: vendorId
     });
@@ -194,7 +191,6 @@ export function AdminDashboard() {
       setLoading(true);
       const params = {};
       if (statusFilter && statusFilter.length > 0) params.status = statusFilter.join(',');
-      if (priorityFilter) params.priority = priorityFilter;
       if (typeFilter) params.type = typeFilter;
       if (vendorFilter) params.vendor_id = vendorFilter;
 
@@ -347,7 +343,6 @@ export function AdminDashboard() {
             <div className="flex items-center space-x-4 flex-wrap gap-2">
               <Filter className="w-5 h-5 text-gray-400" />
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">Status:</span>
                 <div className="relative status-dropdown-container">
                   <button
                     type="button"
@@ -420,18 +415,8 @@ export function AdminDashboard() {
                 </div>
               </div>
               <select
-                value={priorityFilter}
-                onChange={(e) => updateFilters({ ...{ status: statusFilter, priority: e.target.value, type: typeFilter, vendor_id: vendorFilter } })}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
-              >
-                <option value="">All Priorities</option>
-                {PRIORITIES.map(priority => (
-                  <option key={priority} value={priority}>{priority}</option>
-                ))}
-              </select>
-              <select
                 value={typeFilter}
-                onChange={(e) => updateFilters({ ...{ status: statusFilter, priority: priorityFilter, type: e.target.value, vendor_id: vendorFilter } })}
+                onChange={(e) => updateFilters({ ...{ status: statusFilter, type: e.target.value, vendor_id: vendorFilter } })}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
               >
                 <option value="">All Types</option>
@@ -471,7 +456,6 @@ export function AdminDashboard() {
             </div>
             <button onClick={() => {
               setStatusFilter(['Pending']);
-              setPriorityFilter('');
               setTypeFilter('');
               setVendorFilter('');
               setVendorSearchTerm('');
@@ -500,7 +484,6 @@ export function AdminDashboard() {
                     <TableHeader columnName="po_date">PO Date</TableHeader>
                     <TableHeader columnName="vendor">Vendor</TableHeader>
                     <TableHeader columnName="type">Type</TableHeader>
-                    <TableHeader columnName="priority">Priority</TableHeader>
                     <TableHeader columnName="status">Status</TableHeader>
                     <TableHeader columnName="line_items">Line Items</TableHeader>
                     <TableHeader columnName="actions">Actions</TableHeader>
@@ -522,28 +505,25 @@ export function AdminDashboard() {
                           <TableCell value={po.po_date} columnName="po_date" type="date" />
                           <TableCell value={po.vendor?.name || 'N/A'} columnName="vendor" />
                           <TableCell value={po.type.replace('_', ' ')} columnName="type" />
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[po.priority]}`}>
-                              {po.priority}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[po.status]}`}>
+                          <td className="p-4 whitespace-nowrap">
+                            <span className={`text-sm font-medium rounded-full ${statusColors[po.status]}`}>
                               {po.status}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="p-4 whitespace-nowrap text-sm text-gray-500">
                             {po.line_items_count}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <button
-                              onClick={() => navigate(`/admin/pos/${po.id}`)}
-                              className={`font-medium flex items-center space-x-1 ${overdue ? 'text-red-600 hover:text-red-800' : 'text-blue-600 hover:text-blue-800'
-                                }`}
-                            >
-                              <Eye className="w-4 h-4" />
-                              <span>View</span>
-                            </button>
+                          <td className="p-4 whitespace-nowrap text-sm">
+                            <div className="flex items-center justify-center">
+                              <button
+                                onClick={() => navigate(`/admin/pos/${po.id}`)}
+                                className={`font-medium flex items-center space-x-1 ${overdue ? 'text-red-600 hover:text-red-800' : 'text-blue-600 hover:text-blue-800'
+                                  }`}
+                              >
+                                <Eye className="w-4 h-4" />
+                                <span>View</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );

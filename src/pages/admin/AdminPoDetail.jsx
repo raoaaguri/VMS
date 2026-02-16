@@ -264,7 +264,7 @@ export function AdminPoDetail() {
 
   useEffect(() => {
     setLineItemPage(1);
-  }, [lineItemFilters, lineItemPageSize]);
+  }, [lineItemFilters.status, lineItemFilters.priority, lineItemFilters.month, lineItemFilters.category, lineItemFilters.itemName, lineItemFilters.style, lineItemFilters.brand, lineItemPageSize]);
 
 
   const loadPo = async () => {
@@ -296,11 +296,20 @@ export function AdminPoDetail() {
     try {
       setIsProcessing(true);
       await api.admin.updatePoPriority(id, priority);
-      // Reload PO data to get the updated status from server
+
+      // Update all line items priority to match PO priority
+      if (po?.line_items) {
+        const updatePromises = po.line_items.map(lineItem =>
+          api.admin.updateLineItemPriority(id, lineItem.id, priority)
+        );
+        await Promise.all(updatePromises);
+      }
+
+      // Reload PO data to get updated status from server
       const updatedPo = await api.admin.getPoById(id);
       setPo(updatedPo);
       setEditingPoPriority(false);
-      showSuccess('PO priority updated successfully!');
+      showSuccess('PO and all line items priority updated successfully!');
     } catch (err) {
       showError(err.message);
       setError(err.message);
@@ -485,23 +494,26 @@ export function AdminPoDetail() {
                 <div className='flex items-center gap-x-3'>
                   <label className="text-sm text-gray-500 block mb-2">Priority :</label>
                   {editingPoPriority ? (
-                    <div className="flex items-center space-x-2">
-                      <select
-                        defaultValue={po.priority}
-                        onChange={(e) => handleUpdatePoPriority(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
-                        disabled={po.status === 'DELIVERED'}
-                      >
-                        {PRIORITIES.map(p => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={() => setEditingPoPriority(false)}
-                        className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900"
-                      >
-                        Cancel
-                      </button>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <select
+                          defaultValue={po.priority}
+                          onChange={(e) => handleUpdatePoPriority(e.target.value)}
+                          className="px-3 py-1 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
+                          disabled={po.status === 'DELIVERED'}
+                        >
+                          {PRIORITIES.map(p => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => setEditingPoPriority(false)}
+                          className="px-3 py-1 text-sm font-medium rounded-full bg-red-500 text-white hover:bg-red-600"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Note: This will update all line items priority</p>
                     </div>
                   ) : (
                     <div className="flex items-center space-x-2">
@@ -814,6 +826,7 @@ export function AdminPoDetail() {
                             <button
                               onClick={() => setEditingLineItem(item.id)}
                               className="text-xs text-blue-600 hover:text-blue-800"
+                              title="Edit priority for this line item only"
                             >
                               Edit
                             </button>
