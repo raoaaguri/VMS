@@ -9,20 +9,15 @@ import { useSortableTable } from '../../hooks/useSortableTable';
 
 const STATUSES = ['Cancelled', 'Fully Purchased', 'Pending', 'Partially Purchased', 'Writeoff done'];
 
-const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
-
-const priorityColors = {
-  LOW: 'bg-gray-100 text-gray-800',
-  MEDIUM: 'bg-blue-100 text-blue-800',
-  HIGH: 'bg-orange-100 text-orange-800',
-  URGENT: 'bg-red-100 text-red-800'
-};
 
 const statusColors = {
-  CREATED: 'bg-yellow-100 text-yellow-800',
-  ACCEPTED: 'bg-blue-100 text-blue-800',
-  PLANNED: 'bg-indigo-100 text-indigo-800',
-  DELIVERED: 'bg-green-100 text-green-800'
+  Draft: 'bg-gray-100 text-gray-800',
+  Issued: 'bg-yellow-100 text-yellow-800',
+  Acknowledged: 'bg-blue-100 text-blue-800',
+  'Partially Delivered': 'bg-orange-100 text-orange-800',
+  'Fully Delivered': 'bg-green-100 text-green-800',
+  Closed: 'bg-purple-100 text-purple-800',
+  Cancelled: 'bg-red-100 text-red-800'
 };
 
 export function VendorDashboard() {
@@ -219,7 +214,7 @@ export function VendorDashboard() {
                 ))}
               </select>
 
-              <select
+              {/* <select
                 value={priorityFilter}
                 onChange={(e) => updateFilters({ ...{ status: statusFilter, priority: e.target.value, type: typeFilter } })}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
@@ -228,7 +223,7 @@ export function VendorDashboard() {
                 {PRIORITIES.map(priority => (
                   <option key={priority} value={priority}>{priority}</option>
                 ))}
-              </select>
+              </select> */}
 
               <select
                 value={typeFilter}
@@ -264,7 +259,6 @@ export function VendorDashboard() {
                   <tr>
                     <TableHeader columnName="po_number">PO Number</TableHeader>
                     <TableHeader columnName="po_date">PO Date</TableHeader>
-                    <TableHeader columnName="priority">Priority</TableHeader>
                     <TableHeader columnName="type">Type</TableHeader>
                     <TableHeader columnName="status">Status</TableHeader>
                     <TableHeader columnName="line_items">Line Items</TableHeader>
@@ -283,19 +277,14 @@ export function VendorDashboard() {
                       <tr key={po.id} className="hover:bg-gray-50 transition-colors">
                         <TableCell value={po.po_number} columnName="po_number" />
                         <TableCell value={po.po_date} columnName="po_date" type="date" />
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[po.priority]}`}>
-                            {po.priority}
-                          </span>
-                        </td>
                         <TableCell value={po.type.replace('_', ' ')} columnName="type" />
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[po.status]}`}>
                             {po.status}
                           </span>
                         </td>
                         <TableCell value={po.line_items_count} columnName="line_items" />
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">
                           <div className="flex items-center justify-center">
                             <button
                               onClick={() => navigate(`/vendor/pos/${po.id}`)}

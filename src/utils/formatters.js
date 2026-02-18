@@ -3,7 +3,7 @@
  */
 
 /**
- * Formats date to dd-mmm-yyyy format
+ * Formats date to dd-mmm-yyyy format in IST timezone
  * @param {Date|string} date - Date object or date string
  * @returns {string} Formatted date string
  */
@@ -16,11 +16,11 @@ export function formatDate(date) {
   if (typeof date === "string") {
     // If it's a date string from PostgreSQL (YYYY-MM-DD), handle it properly
     if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      // Split the date to avoid timezone issues
+      // Split the date to avoid timezone issues and create in IST
       const [year, month, day] = date.split("-").map(Number);
-      dateObj = new Date(year, month - 1, day); // month is 0-indexed in JS
+      dateObj = new Date(year, month - 1, day);
     } else {
-      // For other date strings, use the regular constructor
+      // For other date strings, use regular constructor
       dateObj = new Date(date);
     }
   } else {
@@ -30,7 +30,12 @@ export function formatDate(date) {
 
   if (isNaN(dateObj.getTime())) return "-";
 
-  const day = dateObj.getDate().toString().padStart(2, "0");
+  // Convert to IST timezone (UTC+5:30)
+  const istOffset = 5.5 * 60; // 5.5 hours in minutes
+  const utcTime = dateObj.getTime() + dateObj.getTimezoneOffset() * 60000;
+  const istTime = new Date(utcTime + istOffset * 60000);
+
+  const day = istTime.getDate().toString().padStart(2, "0");
   const months = [
     "Jan",
     "Feb",
@@ -45,10 +50,51 @@ export function formatDate(date) {
     "Nov",
     "Dec",
   ];
-  const month = months[dateObj.getMonth()];
-  const year = dateObj.getFullYear();
+  const month = months[istTime.getMonth()];
+  const year = istTime.getFullYear();
 
   return `${day}-${month}-${year}`;
+}
+
+/**
+ * Formats date to YYYY-MM-DD format for HTML input in IST timezone
+ * @param {Date|string} date - Date object or date string
+ * @returns {string} Formatted date string in YYYY-MM-DD format
+ */
+export function formatDateForInput(date) {
+  if (!date) return "";
+
+  let dateObj;
+
+  // Handle different date formats
+  if (typeof date === "string") {
+    // If it's a date string from PostgreSQL (YYYY-MM-DD), handle it properly
+    if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // Split the date to avoid timezone issues and create in IST
+      const [year, month, day] = date.split("-").map(Number);
+      dateObj = new Date(year, month - 1, day);
+    } else {
+      // For other date strings, use regular constructor
+      dateObj = new Date(date);
+    }
+  } else {
+    // For Date objects or other types
+    dateObj = new Date(date);
+  }
+
+  if (isNaN(dateObj.getTime())) return "";
+
+  // Convert to IST timezone (UTC+5:30)
+  const istOffset = 5.5 * 60; // 5.5 hours in minutes
+  const utcTime = dateObj.getTime() + dateObj.getTimezoneOffset() * 60000;
+  const istTime = new Date(utcTime + istOffset * 60000);
+
+  // Return in YYYY-MM-DD format for HTML input
+  const year = istTime.getFullYear();
+  const month = (istTime.getMonth() + 1).toString().padStart(2, "0");
+  const day = istTime.getDate().toString().padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 
 /**

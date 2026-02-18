@@ -150,8 +150,7 @@ export async function updatePoStatus(req, res, next) {
 
 export async function acceptPo(req, res, next) {
   try {
-    const { line_items } = req.body;
-    const po = await poService.acceptPo(req.params.id, line_items, req.user);
+    const po = await poService.acceptPo(req.params.id, req.user);
     res.json(po);
   } catch (error) {
     next(error);

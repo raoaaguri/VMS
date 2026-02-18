@@ -8,9 +8,7 @@ import { Toast, useToast } from '../../components/Toast';
 import { useSortableTable } from '../../hooks/useSortableTable';
 import { Package, Filter, Eye, AlertCircle, Clock, CheckCircle, TrendingUp, ChevronDown } from 'lucide-react';
 
-const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
-// const STATUSES = ['CREATED', 'ACCEPTED', 'PLANNED', 'DELIVERED'];
-const STATUSES = ['Cancelled', 'Fully Purchased', 'Pending', 'Partially Purchased', 'Writeoff done'];
+const STATUSES = ['Draft', 'Issued', 'Acknowledged', 'Partially Delivered', 'Fully Delivered', 'Closed', 'Cancelled'];
 
 const priorityColors = {
   LOW: 'bg-gray-100 text-gray-800',
@@ -20,10 +18,13 @@ const priorityColors = {
 };
 
 const statusColors = {
-  CREATED: 'bg-yellow-100 text-yellow-800',
-  ACCEPTED: 'bg-blue-100 text-blue-800',
-  PLANNED: 'bg-indigo-100 text-indigo-800',
-  DELIVERED: 'bg-green-100 text-green-800'
+  Draft: 'bg-gray-100 text-gray-800',
+  Issued: 'bg-yellow-100 text-yellow-800',
+  Acknowledged: 'bg-blue-100 text-blue-800',
+  'Partially Delivered': 'bg-orange-100 text-orange-800',
+  'Fully Delivered': 'bg-green-100 text-green-800',
+  Closed: 'bg-purple-100 text-purple-800',
+  Cancelled: 'bg-red-100 text-red-800'
 };
 
 export function AdminDashboard() {
@@ -35,7 +36,7 @@ export function AdminDashboard() {
   const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState(['Pending']);
+  const [statusFilter, setStatusFilter] = useState(['Issued']);
   const [typeFilter, setTypeFilter] = useState('');
   const [vendorFilter, setVendorFilter] = useState('');
   const [vendors, setVendors] = useState([]);
@@ -190,7 +191,7 @@ export function AdminDashboard() {
     try {
       setLoading(true);
       const params = {};
-      if (statusFilter && statusFilter.length > 0) params.status = statusFilter.join(',');
+      if (statusFilter && statusFilter.length > 0) params.status = statusFilter;
       if (typeFilter) params.type = typeFilter;
       if (vendorFilter) params.vendor_id = vendorFilter;
 
@@ -365,34 +366,34 @@ export function AdminDashboard() {
                         <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={statusFilter.includes('Pending')}
+                            checked={statusFilter.includes('Issued')}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setStatusFilter([...statusFilter, 'Pending']);
+                                setStatusFilter([...statusFilter, 'Issued']);
                               } else {
-                                setStatusFilter(statusFilter.filter(s => s !== 'Pending'));
+                                setStatusFilter(statusFilter.filter(s => s !== 'Issued'));
                               }
                             }}
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
-                          <span className="text-sm">Pending</span>
+                          <span className="text-sm">Issued</span>
                         </label>
                         <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={statusFilter.includes('Partially Purchased')}
+                            checked={statusFilter.includes('Acknowledged')}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setStatusFilter([...statusFilter, 'Partially Purchased']);
+                                setStatusFilter([...statusFilter, 'Acknowledged']);
                               } else {
-                                setStatusFilter(statusFilter.filter(s => s !== 'Partially Purchased'));
+                                setStatusFilter(statusFilter.filter(s => s !== 'Acknowledged'));
                               }
                             }}
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
-                          <span className="text-sm">Partially Purchased</span>
+                          <span className="text-sm">Acknowledged</span>
                         </label>
-                        {STATUSES.filter(status => !['Pending', 'Partially Purchased'].includes(status)).map(status => (
+                        {STATUSES.filter(status => !['Issued', 'Acknowledged'].includes(status)).map(status => (
                           <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                             <input
                               type="checkbox"
@@ -455,7 +456,7 @@ export function AdminDashboard() {
               </div>
             </div>
             <button onClick={() => {
-              setStatusFilter(['Pending']);
+              setStatusFilter(['Issued']);
               setTypeFilter('');
               setVendorFilter('');
               setVendorSearchTerm('');
@@ -500,13 +501,13 @@ export function AdminDashboard() {
                     pos.map(po => {
                       const overdue = isPoOverdue(po);
                       return (
-                        <tr key={po.id} className={`hover:bg-gray-50 transition-colors ${overdue ? 'bg-red-50' : ''}`}>
+                        <tr key={po.id} className={`transition-colors ${overdue ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
                           <TableCell value={po.po_number} columnName="po_number" />
                           <TableCell value={po.po_date} columnName="po_date" type="date" />
                           <TableCell value={po.vendor?.name || 'N/A'} columnName="vendor" />
                           <TableCell value={po.type.replace('_', ' ')} columnName="type" />
-                          <td className="p-4 whitespace-nowrap">
-                            <span className={`text-sm font-medium rounded-full ${statusColors[po.status]}`}>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className={`text-sm font-medium rounded-full px-2 py-1 ${statusColors[po.status]}`}>
                               {po.status}
                             </span>
                           </td>

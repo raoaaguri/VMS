@@ -332,10 +332,10 @@ export const api = {
     },
     getPoById: (id) => apiRequest(`/api/v1/vendor/pos/${id}`),
     getPoHistory: (id) => apiRequest(`/api/v1/vendor/pos/${id}/history`),
-    acceptPo: (id, lineItems) =>
+    acceptPo: (id) =>
       apiRequest(`/api/v1/vendor/pos/${id}/accept`, {
         method: "POST",
-        body: JSON.stringify({ line_items: lineItems }),
+        body: JSON.stringify({}),
       }),
     updateLineItemExpectedDate: (poId, lineItemId, date) =>
       apiRequest(

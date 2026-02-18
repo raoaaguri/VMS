@@ -92,42 +92,39 @@ export function AdminLineItems() {
     setShowVendorDropdown(true);
   };
 
-  // Calculate date range for month filters (same as AdminPoDetails)
+  // Calculate date range for month filters
   const getMonthDateRange = (filter) => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(23, 59, 59, 999); // End of today
 
     switch (filter) {
       case 'last_month':
-        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0); // Last day of previous month
         return {
-          start: lastMonth.toISOString().split('T')[0],
+          start: lastMonthStart.toISOString().split('T')[0],
           end: lastMonthEnd.toISOString().split('T')[0]
         };
 
       case 'last_2_months':
-        const twoMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1);
-        const lastMonthEnd2 = new Date(today.getFullYear(), today.getMonth(), 0);
+        const twoMonthsStart = new Date(today.getFullYear(), today.getMonth() - 2, 1);
         return {
-          start: twoMonthsAgo.toISOString().split('T')[0],
-          end: lastMonthEnd2.toISOString().split('T')[0]
+          start: twoMonthsStart.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
         };
 
       case 'last_3_months':
-        const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1);
-        const lastMonthEnd3 = new Date(today.getFullYear(), today.getMonth(), 0);
+        const threeMonthsStart = new Date(today.getFullYear(), today.getMonth() - 3, 1);
         return {
-          start: threeMonthsAgo.toISOString().split('T')[0],
-          end: lastMonthEnd3.toISOString().split('T')[0]
+          start: threeMonthsStart.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
         };
 
       case 'last_6_months':
-        const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, 1);
-        const lastMonthEnd6 = new Date(today.getFullYear(), today.getMonth(), 0);
+        const sixMonthsStart = new Date(today.getFullYear(), today.getMonth() - 6, 1);
         return {
-          start: sixMonthsAgo.toISOString().split('T')[0],
-          end: lastMonthEnd6.toISOString().split('T')[0]
+          start: sixMonthsStart.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
         };
 
       default:
@@ -192,10 +189,11 @@ export function AdminLineItems() {
 
   const getStatusColor = (status) => {
     const colors = {
-      CREATED: 'bg-gray-100 text-gray-800',
-      ACCEPTED: 'bg-blue-100 text-blue-800',
-      PLANNED: 'bg-yellow-100 text-yellow-800',
-      DELIVERED: 'bg-green-100 text-green-800',
+      'Pending': 'bg-yellow-100 text-yellow-800',
+      'Partially Delivered': 'bg-orange-100 text-orange-800',
+      'Fully Delivered': 'bg-green-100 text-green-800',
+      'Closed': 'bg-purple-100 text-purple-800',
+      'Cancelled': 'bg-red-100 text-red-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -227,12 +225,10 @@ export function AdminLineItems() {
                 >
                   <option value="ALL">All Statuses</option>
                   <option value="Pending">Pending</option>
-                  <option value="Partially Purchased">Partially Purchased</option>
-                  <option value="CREATED">Created</option>
-                  <option value="ACCEPTED">Accepted</option>
-                  <option value="PLANNED">Planned</option>
-                  <option value="DELIVERED">Delivered</option>
-                  <option value="DELAYED">Delayed</option>
+                  <option value="Partially Delivered">Partially Delivered</option>
+                  <option value="Fully Delivered">Fully Delivered</option>
+                  <option value="Closed">Closed</option>
+                  <option value="Cancelled">Cancelled</option>
                 </select>
               </div>
               <div className="">

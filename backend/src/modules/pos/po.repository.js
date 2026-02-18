@@ -26,10 +26,12 @@ export async function findAll(filters = {}, limit = null, offset = null) {
   const params = [];
   const conditions = [];
   let paramNum = 1;
+  let whereParamCount = 0; // Track WHERE clause parameters
 
   if (filters.vendor_id) {
     conditions.push(`po.vendor_id = $${paramNum++}`);
     params.push(filters.vendor_id);
+    whereParamCount++;
   }
 
   if (filters.status) {
@@ -42,26 +44,31 @@ export async function findAll(filters = {}, limit = null, offset = null) {
     if (validStatuses.length === 1) {
       conditions.push(`po.status = $${paramNum++}`);
       params.push(validStatuses[0]);
+      whereParamCount++;
     } else if (validStatuses.length > 1) {
       const statusParams = validStatuses.map(() => `$${paramNum++}`);
       conditions.push(`po.status IN (${statusParams.join(", ")})`);
       params.push(...validStatuses);
+      whereParamCount += validStatuses.length;
     }
   }
 
   if (filters.priority) {
     conditions.push(`po.priority = $${paramNum++}`);
     params.push(filters.priority);
+    whereParamCount++;
   }
 
   if (filters.type) {
     conditions.push(`po.type = $${paramNum++}`);
     params.push(filters.type);
+    whereParamCount++;
   }
 
   if (filters.created_after) {
     conditions.push(`po.po_date >= $${paramNum++}`);
     params.push(filters.created_after);
+    whereParamCount++;
   }
 
   if (conditions.length > 0) {
@@ -86,7 +93,7 @@ export async function findAll(filters = {}, limit = null, offset = null) {
   // Execute both queries
   const [data, countResult] = await Promise.all([
     query(sql, params),
-    query(countSql, params.slice(0, conditions.length)), // Use same params but without limit/offset
+    query(countSql, params.slice(0, whereParamCount)), // Use only WHERE clause parameters for count
   ]);
 
   const total = parseInt(countResult[0]?.total || "0");

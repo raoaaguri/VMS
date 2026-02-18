@@ -5,11 +5,12 @@ import { Toast, useToast } from '../../components/Toast';
 import { Loader } from '../../components/Loader';
 import { TableCell, TableHeader } from '../../components/TableComponents';
 import { ProductPopup } from '../../components/ProductPopup';
-import { formatDate, formatPrice, formatCurrency } from '../../utils/formatters';
+import { formatDate, formatDateForInput, formatPrice, formatCurrency } from '../../utils/formatters';
 import { api } from '../../config/api';
 import { ArrowLeft, Package, Building, CheckCircle, Calendar, History, X, Filter, Download, ChevronDown, List, LayoutGrid } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
-const STATUSES = ['ACCEPTED', 'PLANNED', 'DELIVERED'];
+const STATUSES = ['Pending', 'Partially Delivered', 'Fully Delivered', 'Closed', 'Cancelled'];
 
 const priorityColors = {
   LOW: 'bg-gray-100 text-gray-800',
@@ -19,10 +20,11 @@ const priorityColors = {
 };
 
 const statusColors = {
-  CREATED: 'bg-yellow-100 text-yellow-800',
-  ACCEPTED: 'bg-blue-100 text-blue-800',
-  PLANNED: 'bg-indigo-100 text-indigo-800',
-  DELIVERED: 'bg-green-100 text-green-800'
+  'Pending': 'bg-yellow-100 text-yellow-800',
+  'Partially Delivered': 'bg-orange-100 text-orange-800',
+  'Fully Delivered': 'bg-green-100 text-green-800',
+  'Closed': 'bg-purple-100 text-purple-800',
+  'Cancelled': 'bg-red-100 text-red-800'
 };
 
 export function VendorPoDetail() {
@@ -41,7 +43,7 @@ export function VendorPoDetail() {
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [lineItemFilters, setLineItemFilters] = useState({ status: 'ALL', priority: 'ALL' });
+  const [lineItemFilters, setLineItemFilters] = useState({ status: 'ALL', priority: 'ALL', month: 'ALL' });
   const [lineItemPage, setLineItemPage] = useState(1);
   const [lineItemPageSize, setLineItemPageSize] = useState(10);
   const [updatingItemId, setUpdatingItemId] = useState(null);
@@ -68,7 +70,7 @@ export function VendorPoDetail() {
 
   useEffect(() => {
     setLineItemPage(1);
-  }, [lineItemFilters, lineItemPageSize]);
+  }, [lineItemFilters.status, lineItemFilters.priority, lineItemFilters.month, lineItemPageSize]);
 
   // Add handler for product popup
   const handleProductClick = (item) => {
@@ -112,7 +114,7 @@ export function VendorPoDetail() {
       headers.join(','),
       ...filteredLineItems.map(item => [
         parseInt(item.design_code) || 0,
-        parseInt(item.combination_code) || 0,
+        item.combination_code || 0,
         `"${item.product_name || ''}"`,
         `"${item.style || ''}"`,
         `"${item.sub_style || ''}"`,
@@ -149,10 +151,142 @@ export function VendorPoDetail() {
     showSuccess('PO data exported successfully!');
   };
 
-  const exportWithImage = () => {
-    // For now, just show a message that this is not implemented
+  const exportWithoutImage = () => {
     setShowExportDropdown(false);
-    showError('Export with images feature coming soon!');
+    showSuccess('PO data exported successfully!');
+  };
+
+  const exportWithImage = () => {
+    if (!po) return;
+
+    // Group and sort by design code
+    const groupedItems = {};
+    const sortedItems = [...filteredLineItems].sort((a, b) => {
+      const designA = parseInt(a.design_code) || 0;
+      const designB = parseInt(b.design_code) || 0;
+      return designA - designB;
+    });
+
+    sortedItems.forEach(item => {
+      const designCode = item.design_code || 'Unknown';
+      if (!groupedItems[designCode]) {
+        groupedItems[designCode] = [];
+      }
+      groupedItems[designCode].push(item);
+    });
+
+    const designCodes = Object.keys(groupedItems);
+    const workbookData = [];
+
+    // Process each section individually with gaps
+    designCodes.forEach((designCode, index) => {
+      const items = groupedItems[designCode];
+
+      // Headers for this section
+      const headers = ['Product Name', 'Image', 'D.No', 'COLOR', 'POLISH', 'STYLE', 'SIZE', 'DMY7', 'DMY8', 'Qty'];
+
+      // Add headers row
+      workbookData.push(headers);
+
+      // Add data rows for this section
+      items.forEach((item) => {
+        // Debug logging
+        console.log('Item data:', {
+          combination_code: item.combination_code,
+          product_name: item.product_name,
+          design_code: item.design_code
+        });
+
+        const imageUrl = item.combination_code
+          ? `https://kushals-hq-prod.s3.amazonaws.com/images/${item.combination_code}.jpg`
+          : '';
+
+        console.log('Generated image URL:', imageUrl);
+
+        const row = [
+          item.product_name || '', // Product Name
+          imageUrl, // Image
+          item.design_code || '', // D.No
+          item.color || '', // COLOR
+          item.polish || '', // POLISH
+          item.style || '', // STYLE
+          item.size || '', // SIZE
+          'N/A', // DMY7
+          'N/A', // DMY8
+          item.quantity || 0 // Qty
+        ];
+
+        console.log('Excel row:', row);
+        workbookData.push(row);
+      });
+
+      // Add 2 blank rows between sections (except last)
+      if (index < designCodes.length - 1) {
+        workbookData.push(Array(10).fill('')); // First blank row
+        workbookData.push(Array(10).fill('')); // Second blank row
+      }
+    });
+
+    // Create Excel workbook
+    const worksheet = XLSX.utils.json_to_sheet(workbookData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "PO Data");
+
+    // Generate and download file
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `PO_${po.po_number}_with_images.xlsx`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setShowExportDropdown(false);
+    showSuccess('PO data with images exported successfully!');
+  };
+
+  // Calculate date range for month filters
+  const getMonthDateRange = (filter) => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+
+    switch (filter) {
+      case 'last_month':
+        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0); // Last day of previous month
+        return {
+          start: lastMonthStart.toISOString().split('T')[0],
+          end: lastMonthEnd.toISOString().split('T')[0]
+        };
+
+      case 'last_2_months':
+        const twoMonthsStart = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+        return {
+          start: twoMonthsStart.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+
+      case 'last_3_months':
+        const threeMonthsStart = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+        return {
+          start: threeMonthsStart.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+
+      case 'last_6_months':
+        const sixMonthsStart = new Date(today.getFullYear(), today.getMonth() - 6, 1);
+        return {
+          start: sixMonthsStart.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+
+      default:
+        return null;
+    }
   };
 
   const loadPo = async () => {
@@ -198,23 +332,9 @@ export function VendorPoDetail() {
   const handleAcceptPo = async () => {
     try {
       setIsProcessing(true);
-      const lineItems = po.line_items.map(item => ({
-        line_item_id: item.id,
-        expected_delivery_date: acceptDates[item.id]
-      }));
-
-      const allDatesProvided = lineItems.every(item => item.expected_delivery_date);
-
-      if (!allDatesProvided) {
-        showError('Please provide expected delivery dates for all line items');
-        setIsProcessing(false);
-        return;
-      }
-
-      await api.vendor.acceptPo(id, lineItems);
+      await api.vendor.acceptPo(id);
       showSuccess('PO accepted successfully!');
       await loadPo();
-      setShowAcceptForm(false);
       setError('');
     } catch (err) {
       showError(err.message);
@@ -307,7 +427,19 @@ export function VendorPoDetail() {
   const filteredLineItems = (po?.line_items || []).filter(item => {
     if (lineItemFilters.status !== 'ALL' && item.status !== lineItemFilters.status) return false;
     if (lineItemFilters.priority !== 'ALL' && item.line_priority !== lineItemFilters.priority) return false;
-    return true;
+
+    // Month filter
+    let monthMatch = true;
+    if (lineItemFilters.month !== 'ALL' && lineItemFilters.month !== '' && item.created_at) {
+      const dateRange = getMonthDateRange(lineItemFilters.month);
+      if (dateRange) {
+        // Convert item.created_at to IST date for comparison
+        const itemDate = formatDateForInput(item.created_at);
+        monthMatch = itemDate >= dateRange.start && itemDate <= dateRange.end;
+      }
+    }
+
+    return monthMatch;
   });
 
   const totalLineItems = filteredLineItems.length;
@@ -333,8 +465,8 @@ export function VendorPoDetail() {
     const [imageLoaded, setImageLoaded] = useState(false);
     const [imageError, setImageError] = useState(false);
 
-    const imageUrl = parseInt(item.combination_code) 
-      ? `https://kushals-hq-prod.s3.ap-south-1.amazonaws.com/images/${parseInt(item.combination_code)}.jpg`
+    const imageUrl = item.combination_code
+      ? `https://kushals-hq-prod.s3.ap-south-1.amazonaws.com/images/${item.combination_code}.jpg`
       : null;
 
     return (
@@ -345,9 +477,8 @@ export function VendorPoDetail() {
             <img
               src={imageUrl}
               alt={item.product_name || 'Product Image'}
-              className={`w-full h-full object-contain transition-opacity ${
-                imageLoaded ? 'opacity-100' : 'opacity-0'
-              }`}
+              className={`w-full h-full object-contain transition-opacity ${imageLoaded ? 'opacity-100' : 'opacity-0'
+                }`}
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageError(true)}
             />
@@ -357,7 +488,7 @@ export function VendorPoDetail() {
               <p className="text-sm">No Image</p>
             </div>
           )}
-          
+
           {/* Top overlay */}
           <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 to-transparent p-3">
             <div className="flex justify-between items-start text-white">
@@ -373,7 +504,7 @@ export function VendorPoDetail() {
               </div>
             </div>
           </div>
-          
+
           {/* Bottom overlay */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-3">
             <div className="flex justify-between items-end text-white">
@@ -471,11 +602,9 @@ export function VendorPoDetail() {
                 )}
               </div>
 
-              <button className='bg-green-500 px-4 py-2 text-white rounded-lg hover:bg-green-600'>Accept</button>
-
-              {po.status === 'CREATED' && (
+              {po.status === 'Issued' && (
                 <button
-                  onClick={() => setShowAcceptForm(true)}
+                  onClick={handleAcceptPo}
                   className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
                 >
                   <CheckCircle className="w-4 h-4" />
@@ -636,27 +765,25 @@ export function VendorPoDetail() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 mt-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Line Items</h2>
-            
+
             {/* View Toggle */}
             <div className="flex items-center bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('list')}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
-                  viewMode === 'list'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'list'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
               >
                 <List className="w-4 h-4" />
                 List
               </button>
               <button
                 onClick={() => setViewMode('tiles')}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
-                  viewMode === 'tiles'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'tiles'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
               >
                 <LayoutGrid className="w-4 h-4" />
                 Tiles
@@ -673,10 +800,11 @@ export function VendorPoDetail() {
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
               >
                 <option value="ALL">All Statuses</option>
-                <option value="CREATED">Created</option>
-                <option value="ACCEPTED">Accepted</option>
-                <option value="PLANNED">Planned</option>
-                <option value="DELIVERED">Delivered</option>
+                <option value="Pending">Pending</option>
+                <option value="Partially Delivered">Partially Delivered</option>
+                <option value="Fully Delivered">Fully Delivered</option>
+                <option value="Closed">Closed</option>
+                <option value="Cancelled">Cancelled</option>
               </select>
               <select
                 value={lineItemFilters.priority}
@@ -689,9 +817,22 @@ export function VendorPoDetail() {
                 <option value="HIGH">High</option>
                 <option value="URGENT">Urgent</option>
               </select>
+
+              {/* Month Filter */}
+              <select
+                value={lineItemFilters.month}
+                onChange={(e) => setLineItemFilters({ ...lineItemFilters, month: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+              >
+                <option value="ALL">All Periods</option>
+                <option value="last_month">Last Month</option>
+                <option value="last_2_months">Last 2 Months</option>
+                <option value="last_3_months">Last 3 Months</option>
+                <option value="last_6_months">Last 6 Months</option>
+              </select>
             </div>
             <button onClick={() => {
-              setLineItemFilters({ status: 'ALL', priority: 'ALL' });
+              setLineItemFilters({ status: 'ALL', priority: 'ALL', month: 'ALL' });
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 
@@ -699,105 +840,99 @@ export function VendorPoDetail() {
             <div className="overflow-x-auto overflow-scroll">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <TableHeader columnName="design_code">Design Code</TableHeader>
-                  <TableHeader columnName="combination_code">Combination Code</TableHeader>
-                  <TableHeader columnName="product_name">Product Name</TableHeader>
-                  <TableHeader columnName="style">Style</TableHeader>
-                  <TableHeader columnName="color">Color</TableHeader>
-                  <TableHeader columnName="sub_color">Sub-Color</TableHeader>
-                  <TableHeader columnName="polish">Polish</TableHeader>
-                  <TableHeader columnName="size">Size</TableHeader>
-                  <TableHeader columnName="weight">Weight</TableHeader>
-                  <TableHeader columnName="quantity">Order Qty</TableHeader>
-                  <TableHeader columnName="received_qty">Delivered Qty</TableHeader>
-                  <TableHeader columnName="pending_qty">Pending Qty</TableHeader>
-                  <TableHeader columnName="price">Price</TableHeader>
-                  <TableHeader columnName="expected_delivery_date">Expected Date</TableHeader>
-                  <TableHeader columnName="status">Status</TableHeader>
-                  <TableHeader columnName="priority">Priority</TableHeader>
-                  <TableHeader columnName="action">Action</TableHeader>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedLineItems.length === 0 && (
                   <tr>
-                    <td colSpan="19" className="px-4 py-8 text-center text-gray-500">
-                      No line items match the selected filters
-                    </td>
+                    <TableHeader columnName="design_code">Design Code</TableHeader>
+                    <TableHeader columnName="combination_code">Combination Code</TableHeader>
+                    <TableHeader columnName="product_name">Product Name</TableHeader>
+                    <TableHeader columnName="style">Style</TableHeader>
+                    <TableHeader columnName="color">Color</TableHeader>
+                    <TableHeader columnName="sub_color">Sub-Color</TableHeader>
+                    <TableHeader columnName="polish">Polish</TableHeader>
+                    <TableHeader columnName="size">Size</TableHeader>
+                    <TableHeader columnName="weight">Weight</TableHeader>
+                    <TableHeader columnName="quantity">Order Qty</TableHeader>
+                    <TableHeader columnName="received_qty">Delivered Qty</TableHeader>
+                    <TableHeader columnName="pending_qty">Pending Qty</TableHeader>
+                    <TableHeader columnName="price">Price</TableHeader>
+                    <TableHeader columnName="expected_delivery_date">Expected Date</TableHeader>
+                    <TableHeader columnName="status">Status</TableHeader>
+                    <TableHeader columnName="priority">Priority</TableHeader>
                   </tr>
-                )}
-                {paginatedLineItems.map(item => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <TableCell value={parseInt(item.design_code) || 0} columnName="design_code" />
-                    <TableCell
-                      value={parseInt(item.combination_code) || 0}
-                      columnName="combination_code"
-                      onClick={() => handleProductClick(item)}
-                    />
-                    <TableCell value={item.product_name} columnName="product_name" />
-                    <TableCell value={item.style} columnName="style" />
-                    <TableCell value={item.color} columnName="color" />
-                    <TableCell value={item.sub_color} columnName="sub_color" />
-                    <TableCell value={item.polish} columnName="polish" />
-                    <TableCell value={item.size} columnName="size" />
-                    <TableCell value={item.weight} columnName="weight" type="price" />
-                    <TableCell value={item.quantity} columnName="quantity" />
-                    <TableCell value={item.received_qty || 0} columnName="received_qty" />
-                    <TableCell value={(item.quantity || 0) - (item.received_qty || 0)} columnName="pending_qty" />
-                    <TableCell value={item.price} columnName="price" type="currency" />
-                    <td className="px-4 py-3 text-sm">
-                      {showAcceptForm || (item.status !== 'DELIVERED' && item.status !== 'CREATED') ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="date"
-                            value={acceptDates[item.id] || item.expected_delivery_date || ''}
-                            onChange={(e) => {
-                              const newDate = e.target.value;
-                              // Update acceptDates immediately for responsive UI
-                              setAcceptDates(prev => ({
-                                ...prev,
-                                [item.id]: newDate
-                              }));
-                              // Only call API if date is different from current
-                              if (newDate && newDate !== (item.expected_delivery_date || '')) {
-                                handleDateChange(item.id, newDate, item.expected_delivery_date || '');
-                              }
-                            }}
-                            disabled={item.status === 'DELIVERED'}
-                            className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-300"
-                          />
-                          {updatingItemId === item.id && (
-                            <span className="text-blue-500 text-xs whitespace-nowrap">Updating...</span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-gray-500">
-                          {acceptDates[item.id] || item.expected_delivery_date
-                            ? formatDate(acceptDates[item.id] || item.expected_delivery_date)
-                            : '-'}
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedLineItems.length === 0 && (
+                    <tr>
+                      <td colSpan="19" className="px-4 py-8 text-center text-gray-500">
+                        No line items match the selected filters
+                      </td>
+                    </tr>
+                  )}
+                  {paginatedLineItems.map(item => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <TableCell value={parseInt(item.design_code) || 0} columnName="design_code" />
+                      <TableCell
+                        value={item.combination_code || 0}
+                        columnName="combination_code"
+                        onClick={() => handleProductClick(item)}
+                      />
+                      <TableCell value={item.product_name} columnName="product_name" />
+                      <TableCell value={item.style} columnName="style" />
+                      <TableCell value={item.color} columnName="color" />
+                      <TableCell value={item.sub_color} columnName="sub_color" />
+                      <TableCell value={item.polish} columnName="polish" />
+                      <TableCell value={item.size} columnName="size" />
+                      <TableCell value={item.weight} columnName="weight" type="price" />
+                      <TableCell value={item.quantity} columnName="quantity" />
+                      <TableCell value={item.received_qty || 0} columnName="received_qty" />
+                      <TableCell value={(item.quantity || 0) - (item.received_qty || 0)} columnName="pending_qty" />
+                      <TableCell value={item.price} columnName="price" type="currency" />
+                      <td className="px-4 py-3 text-sm">
+                        {showAcceptForm || (item.status !== 'DELIVERED' && item.status !== 'CREATED') ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="date"
+                              value={formatDateForInput(item.expected_delivery_date)}
+                              onChange={(e) => {
+                                const newDate = e.target.value;
+                                // Update acceptDates immediately for responsive UI
+                                setAcceptDates(prev => ({
+                                  ...prev,
+                                  [item.id]: newDate
+                                }));
+                                // Only call API if date is different from current
+                                if (newDate && newDate !== formatDateForInput(item.expected_delivery_date)) {
+                                  handleDateChange(item.id, newDate, item.expected_delivery_date || '');
+                                }
+                              }}
+                              disabled={item.status === 'DELIVERED'}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-300"
+                            />
+                            {updatingItemId === item.id && (
+                              <span className="text-blue-500 text-xs whitespace-nowrap">Updating...</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-500">
+                            {item.expected_delivery_date
+                              ? formatDate(item.expected_delivery_date)
+                              : '-'}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[item.status]}`}>
+                          {item.status}
                         </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[item.status]}`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[item.line_priority]}`}>
-                        {item.line_priority}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <button className="bg-green-500 text-white px-3 py-1 rounded text-xs hover:bg-green-600">
-                        Accept
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[item.line_priority]}`}>
+                          {item.line_priority}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : (
             /* Tiles View */

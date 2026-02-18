@@ -31,7 +31,7 @@ export async function createPo(poData, lineItemsData) {
 
   const po = await poRepository.create({
     ...poData,
-    status: "CREATED",
+    status: "Issued",
   });
 
   const lineItems = lineItemsData.map((item) => ({
@@ -50,7 +50,7 @@ export async function updatePoPriority(id, priority, user) {
 
   if (!po) throw new NotFoundError("Purchase order not found");
 
-  if (po.status === "DELIVERED") {
+  if (po.status === "Fully Delivered") {
     throw new BadRequestError("Cannot update priority of delivered PO");
   }
 
@@ -95,55 +95,17 @@ export async function updatePoStatus(id, status, user) {
   return updatedPo;
 }
 
-export async function acceptPo(id, lineItemUpdates, user) {
+export async function acceptPo(id, user) {
   const po = await poRepository.findById(id);
 
   if (!po) throw new NotFoundError("Purchase order not found");
 
-  if (po.status !== "CREATED") {
-    throw new BadRequestError("PO can only be accepted when in CREATED status");
+  if (po.status !== "Issued") {
+    throw new BadRequestError("PO can only be accepted when in Issued status");
   }
 
-  for (const update of lineItemUpdates) {
-    if (!update.expected_delivery_date) {
-      throw new BadRequestError(
-        "Expected delivery date is required for all line items",
-      );
-    }
-
-    const oldItem = await poRepository.findLineItemById(update.line_item_id);
-
-    await poRepository.updateLineItem(update.line_item_id, {
-      expected_delivery_date: update.expected_delivery_date,
-      status: "ACCEPTED",
-    });
-
-    if (user) {
-      // Create history for status change
-      await poRepository.createLineItemHistory({
-        po_id: id,
-        line_item_id: update.line_item_id,
-        changed_by_user_id: user.id,
-        changed_by_role: user.role,
-        action_type: "STATUS_CHANGE",
-        field_name: "status",
-        old_value: "CREATED",
-        new_value: "ACCEPTED",
-      });
-
-      // Create history for expected delivery date
-      await poRepository.createLineItemHistory({
-        po_id: id,
-        line_item_id: update.line_item_id,
-        changed_by_user_id: user.id,
-        changed_by_role: user.role,
-        action_type: "EXPECTED_DATE_CHANGE",
-        field_name: "expected_delivery_date",
-        old_value: oldItem.expected_delivery_date || null,
-        new_value: update.expected_delivery_date,
-      });
-    }
-  }
+  // Update PO status directly without requiring line item updates
+  await poRepository.update(id, { status: "Acknowledged" });
 
   if (user) {
     await poRepository.createPoHistory({
@@ -152,12 +114,10 @@ export async function acceptPo(id, lineItemUpdates, user) {
       changed_by_role: user.role,
       action_type: "STATUS_CHANGE",
       field_name: "status",
-      old_value: "CREATED",
-      new_value: "ACCEPTED",
+      old_value: "Issued",
+      new_value: "Acknowledged",
     });
   }
-
-  await poRepository.update(id, { status: "ACCEPTED" });
 
   return await getPoById(id);
 }
@@ -293,7 +253,7 @@ export async function updateLineItemStatus(poId, lineItemId, status, user) {
   );
 
   if (deliveredCount === totalCount) {
-    await poRepository.update(poId, { status: "DELIVERED" });
+    await poRepository.update(poId, { status: "Fully Delivered" });
   }
 
   return await poRepository.findLineItemById(lineItemId);
@@ -492,7 +452,7 @@ export async function importPoLineItemsFromCsv(poId, csvText, user) {
   const po = await poRepository.findById(poId);
   if (!po) throw new NotFoundError("Purchase order not found");
 
-  if (po.status === "DELIVERED") {
+  if (po.status === "Fully Delivered") {
     throw new BadRequestError("Cannot import line items for delivered PO");
   }
 
