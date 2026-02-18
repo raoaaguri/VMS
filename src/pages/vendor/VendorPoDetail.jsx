@@ -662,7 +662,7 @@ export function VendorPoDetail() {
                       <button
                         onClick={() => handleUpdatePoExpectedDate(tempPoExpectedDate)}
                         disabled={!tempPoExpectedDate}
-                        className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
+                        className="px-2 py-1 text-xs bg-green-600 text-white rounded-full hover:bg-green-700 disabled:bg-gray-400"
                       >
                         Save
                       </button>
@@ -671,7 +671,7 @@ export function VendorPoDetail() {
                           setEditingPoExpectedDate(false);
                           setTempPoExpectedDate('');
                         }}
-                        className="px-2 py-1 text-xs text-gray-600 hover:text-gray-900"
+                        className="px-2 py-1 text-xs rounded-full text-white hover:text-gray-900 bg-red-500"
                       >
                         Cancel
                       </button>
@@ -698,7 +698,7 @@ export function VendorPoDetail() {
                 <div className='flex items-center gap-x-3'>
                   <label className="text-sm text-gray-500">Status :</label>
                   <span className={`px-3 py-1 text-sm font-medium rounded-full bg-yellow-300 ${statusColors[po.status]}`}>
-                    {po.status}
+                    {po.status.charAt(0) + po.status.slice(1).toLowerCase()}
                   </span>
                 </div>
               </div>
@@ -920,8 +920,8 @@ export function VendorPoDetail() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[item.status]}`}>
-                          {item.status}
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${statusColors[item.status]}`}>
+                          {item.status.charAt(0) + item.status.slice(1).toLowerCase()}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm">

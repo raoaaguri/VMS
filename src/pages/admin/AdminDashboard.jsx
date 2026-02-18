@@ -36,7 +36,7 @@ export function AdminDashboard() {
   const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState(['Issued']);
+  const [statusFilter, setStatusFilter] = useState(['Issued', 'Acknowledged']);
   const [typeFilter, setTypeFilter] = useState('');
   const [vendorFilter, setVendorFilter] = useState('');
   const [vendors, setVendors] = useState([]);

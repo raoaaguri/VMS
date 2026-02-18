@@ -975,7 +975,7 @@ export function AdminPoDetail() {
                       <TableCell value={item.mrp} columnName="mrp" type="currency" />
                       <TableCell value={item.expected_delivery_date} columnName="expected_delivery_date" type="date" />
                       <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[item.status]}`}>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${statusColors[item.status]}`}>
                           {item.status}
                         </span>
                       </td>
