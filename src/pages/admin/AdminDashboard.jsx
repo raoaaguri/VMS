@@ -456,7 +456,7 @@ export function AdminDashboard() {
               </div>
             </div>
             <button onClick={() => {
-              setStatusFilter(['Issued']);
+              setStatusFilter(['Issued', 'Acknowledged']);
               setTypeFilter('');
               setVendorFilter('');
               setVendorSearchTerm('');
