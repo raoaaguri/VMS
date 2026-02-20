@@ -13,7 +13,7 @@ export function VendorLineItems() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(10);
   const [filters, setFilters] = useState({
     status: 'ALL',
     priority: 'ALL',
@@ -283,6 +283,7 @@ export function VendorLineItems() {
                     }}
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
+                    <option value={10}>10</option>
                     <option value={25}>25</option>
                     <option value={50}>50</option>
                     <option value={75}>75</option>
