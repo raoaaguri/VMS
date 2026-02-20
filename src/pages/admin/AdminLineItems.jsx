@@ -25,7 +25,9 @@ export function AdminLineItems() {
     priority: 'ALL',
     vendor_id: 'ALL',
     month: 'ALL',
+    itemName: '',
   });
+  const [availableItemNames, setAvailableItemNames] = useState([]);
   const { sortedData, requestSort, getSortIcon } = useSortableTable(lineItems);
 
   useEffect(() => {
@@ -35,6 +37,13 @@ export function AdminLineItems() {
   useEffect(() => {
     loadVendors();
   }, []);
+
+  useEffect(() => {
+    if (lineItems.length > 0) {
+      const itemNames = [...new Set(lineItems.map(item => item.product_name).filter(Boolean))].sort();
+      setAvailableItemNames(itemNames);
+    }
+  }, [lineItems]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -139,6 +148,7 @@ export function AdminLineItems() {
       if (filters.status && filters.status !== 'ALL') params.status = filters.status;
       if (filters.priority !== 'ALL') params.priority = filters.priority;
       if (filters.vendor_id !== 'ALL') params.vendor_id = filters.vendor_id;
+      if (filters.itemName && filters.itemName !== '') params.items_name = filters.itemName;
 
       // Add month filter date range
       if (filters.month && filters.month !== 'ALL') {
@@ -365,9 +375,26 @@ export function AdminLineItems() {
                   </div>
                 )}
               </div>
+
+              {/* Item Name Filter */}
+              <div className="">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Item Name
+                </label>
+                <select
+                  value={filters.itemName}
+                  onChange={(e) => updateFilters({ ...filters, itemName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+                >
+                  <option value="">All Items</option>
+                  {availableItemNames.map(itemName => (
+                    <option key={itemName} value={itemName}>{itemName}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <button onClick={() => {
-              updateFilters({ status: 'ALL', priority: 'ALL', vendor_id: 'ALL', month: 'ALL' });
+              updateFilters({ status: 'ALL', priority: 'ALL', vendor_id: 'ALL', month: 'ALL', itemName: '' });
               setVendorSearchTerm('');
               setShowVendorDropdown(false);
               setShowMonthDropdown(false);

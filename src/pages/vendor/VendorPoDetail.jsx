@@ -43,7 +43,10 @@ export function VendorPoDetail() {
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [lineItemFilters, setLineItemFilters] = useState({ status: 'ALL', priority: 'ALL', month: 'ALL' });
+  const [lineItemFilters, setLineItemFilters] = useState({ status: 'ALL', priority: 'ALL', month: 'ALL', itemName: '' });
+  const [availableFilters, setAvailableFilters] = useState({
+    itemNames: [],
+  });
   const [lineItemPage, setLineItemPage] = useState(1);
   const [lineItemPageSize, setLineItemPageSize] = useState(10);
   const [updatingItemId, setUpdatingItemId] = useState(null);
@@ -70,7 +73,13 @@ export function VendorPoDetail() {
 
   useEffect(() => {
     setLineItemPage(1);
-  }, [lineItemFilters.status, lineItemFilters.priority, lineItemFilters.month, lineItemPageSize]);
+  }, [lineItemFilters.status, lineItemFilters.priority, lineItemFilters.month, lineItemFilters.itemName, lineItemPageSize]);
+
+  useEffect(() => {
+    if (po?.line_items) {
+      extractAvailableFilters();
+    }
+  }, [po]);
 
   // Add handler for product popup
   const handleProductClick = (item) => {
@@ -81,6 +90,21 @@ export function VendorPoDetail() {
   const closeProductPopup = () => {
     setShowProductPopup(false);
     setSelectedProduct(null);
+  };
+
+  const extractAvailableFilters = () => {
+    if (!po?.line_items) return;
+
+    const itemNames = new Set();
+
+    po.line_items.forEach(item => {
+      // Extract item names
+      if (item.product_name) itemNames.add(item.product_name);
+    });
+
+    setAvailableFilters({
+      itemNames: Array.from(itemNames).sort(),
+    });
   };
 
   const exportPOData = () => {
@@ -427,6 +451,7 @@ export function VendorPoDetail() {
   const filteredLineItems = (po?.line_items || []).filter(item => {
     if (lineItemFilters.status !== 'ALL' && item.status !== lineItemFilters.status) return false;
     if (lineItemFilters.priority !== 'ALL' && item.line_priority !== lineItemFilters.priority) return false;
+    if (lineItemFilters.itemName !== '' && item.product_name !== lineItemFilters.itemName) return false;
 
     // Month filter
     let monthMatch = true;
@@ -438,7 +463,6 @@ export function VendorPoDetail() {
         monthMatch = itemDate >= dateRange.start && itemDate <= dateRange.end;
       }
     }
-
     return monthMatch;
   });
 
@@ -830,9 +854,21 @@ export function VendorPoDetail() {
                 <option value="last_3_months">Last 3 Months</option>
                 <option value="last_6_months">Last 6 Months</option>
               </select>
+
+              {/* Item Name Filter */}
+              <select
+                value={lineItemFilters.itemName}
+                onChange={(e) => setLineItemFilters({ ...lineItemFilters, itemName: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 w-48"
+              >
+                <option value="">All Items</option>
+                {availableFilters.itemNames.map(itemName => (
+                  <option key={itemName} value={itemName}>{itemName}</option>
+                ))}
+              </select>
             </div>
             <button onClick={() => {
-              setLineItemFilters({ status: 'ALL', priority: 'ALL', month: 'ALL' });
+              setLineItemFilters({ status: 'ALL', priority: 'ALL', month: 'ALL', itemName: '' });
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 

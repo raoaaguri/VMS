@@ -36,7 +36,7 @@ export function AdminDashboard() {
   const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState(['Issued', 'Acknowledged']);
+  const [statusFilter, setStatusFilter] = useState(['Acknowledged', 'Partially Delivered']);
   const [typeFilter, setTypeFilter] = useState('');
   const [vendorFilter, setVendorFilter] = useState('');
   const [vendors, setVendors] = useState([]);
@@ -366,17 +366,17 @@ export function AdminDashboard() {
                         <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={statusFilter.includes('Issued')}
+                            checked={statusFilter.includes('Partially Delivered')}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setStatusFilter([...statusFilter, 'Issued']);
+                                setStatusFilter([...statusFilter, 'Partially Delivered']);
                               } else {
-                                setStatusFilter(statusFilter.filter(s => s !== 'Issued'));
+                                setStatusFilter(statusFilter.filter(s => s !== 'Partially Delivered'));
                               }
                             }}
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
-                          <span className="text-sm">Issued</span>
+                          <span className="text-sm">Partially Delivered</span>
                         </label>
                         <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                           <input
@@ -393,7 +393,7 @@ export function AdminDashboard() {
                           />
                           <span className="text-sm">Acknowledged</span>
                         </label>
-                        {STATUSES.filter(status => !['Issued', 'Acknowledged'].includes(status)).map(status => (
+                        {STATUSES.filter(status => !['Acknowledged', 'Partially Delivered'].includes(status)).map(status => (
                           <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                             <input
                               type="checkbox"
@@ -456,7 +456,7 @@ export function AdminDashboard() {
               </div>
             </div>
             <button onClick={() => {
-              setStatusFilter(['Issued', 'Acknowledged']);
+              setStatusFilter(['Acknowledged', 'Partially Delivered']);
               setTypeFilter('');
               setVendorFilter('');
               setVendorSearchTerm('');
@@ -501,7 +501,7 @@ export function AdminDashboard() {
                     pos.map(po => {
                       const overdue = isPoOverdue(po);
                       return (
-                        <tr key={po.id} className={`transition-colors ${overdue ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                        <tr key={po.id} className={`transition-colors ${overdue ? 'bg-red-500 text-white' : 'hover:bg-gray-50'}`}>
                           <TableCell value={po.po_number} columnName="po_number" />
                           <TableCell value={po.po_date} columnName="po_date" type="date" />
                           <TableCell value={po.vendor?.name || 'N/A'} columnName="vendor" />
@@ -511,14 +511,14 @@ export function AdminDashboard() {
                               {po.status}
                             </span>
                           </td>
-                          <td className="p-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className={`p-4 whitespace-nowrap text-sm ${overdue ? 'bg-red-500 text-white' : 'hover:bg-gray-50'}`}>
                             {po.line_items_count}
                           </td>
                           <td className="p-4 whitespace-nowrap text-sm">
                             <div className="flex items-center justify-center">
                               <button
                                 onClick={() => navigate(`/admin/pos/${po.id}`)}
-                                className={`font-medium flex items-center space-x-1 ${overdue ? 'text-red-600 hover:text-red-800' : 'text-blue-600 hover:text-blue-800'
+                                className={`font-medium flex items-center space-x-1 ${overdue ? 'text-white' : 'text-blue-600 hover:text-blue-800'
                                   }`}
                               >
                                 <Eye className="w-4 h-4" />

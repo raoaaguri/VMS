@@ -8,6 +8,7 @@ export async function getAdminLineItems(req, res, next) {
       vendor_id,
       start_date,
       end_date,
+      items_name,
       page = 1,
       limit = 10,
     } = req.query;
@@ -60,6 +61,12 @@ export async function getAdminLineItems(req, res, next) {
       params.push(priority);
     }
 
+    // Apply items name filter
+    if (items_name && items_name.trim() !== "") {
+      conditions.push(`poli.product_name = $${paramNum++}`);
+      params.push(items_name.trim());
+    }
+
     const whereClause =
       conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
 
@@ -92,7 +99,7 @@ export async function getAdminLineItems(req, res, next) {
         poli.status,
         CASE 
           WHEN poli.expected_delivery_date < CURRENT_DATE AND poli.status != 'DELIVERED' THEN true
-          ELSE false
+            ELSE false
         END as is_delayed
       FROM purchase_order_line_items poli
       JOIN purchase_orders po ON poli.po_id = po.id
@@ -119,7 +126,7 @@ export async function getAdminLineItems(req, res, next) {
 
 export async function getVendorLineItems(req, res, next) {
   try {
-    const { status, priority, page = 1, limit = 50 } = req.query;
+    const { status, priority, items_name, page = 1, limit = 50 } = req.query;
     const { vendor_id } = req.user;
     const offset = (page - 1) * limit;
 
@@ -153,10 +160,10 @@ export async function getVendorLineItems(req, res, next) {
       params.push(priority);
     }
 
-    // Apply item name filter
-    if (req.query.product_name && req.query.product_name.trim() !== "") {
-      conditions.push(`poli.product_name ILIKE $${paramNum++}`);
-      params.push(`%${req.query.product_name.trim()}%`);
+    // Apply items name filter
+    if (items_name && items_name.trim() !== "") {
+      conditions.push(`poli.product_name = $${paramNum++}`);
+      params.push(items_name.trim());
     }
 
     const whereClause = ` WHERE ${conditions.join(" AND ")}`;

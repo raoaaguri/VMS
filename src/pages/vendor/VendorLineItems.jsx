@@ -19,11 +19,19 @@ export function VendorLineItems() {
     priority: 'ALL',
     itemName: '',
   });
+  const [availableItemNames, setAvailableItemNames] = useState([]);
   const { sortedData, requestSort, getSortIcon } = useSortableTable(lineItems);
 
   useEffect(() => {
     fetchLineItems();
   }, [filters, page, pageSize]);
+
+  useEffect(() => {
+    if (lineItems.length > 0) {
+      const itemNames = [...new Set(lineItems.map(item => item.product_name).filter(Boolean))].sort();
+      setAvailableItemNames(itemNames);
+    }
+  }, [lineItems]);
 
   const updateFilters = (nextFilters) => {
     setPage(1);
@@ -36,8 +44,8 @@ export function VendorLineItems() {
       const params = {};
       if (filters.status !== 'ALL') params.status = filters.status;
       if (filters.priority !== 'ALL') params.priority = filters.priority;
-      if (filters.itemName && filters.itemName.trim() !== '') {
-        params.product_name = filters.itemName.trim();
+      if (filters.itemName && filters.itemName !== '') {
+        params.items_name = filters.itemName;
       }
 
       params.page = page;
@@ -144,13 +152,16 @@ export function VendorLineItems() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Item Name
                 </label>
-                <input
-                  type="text"
-                  placeholder="Search item name..."
+                <select
                   value={filters.itemName}
                   onChange={(e) => updateFilters({ ...filters, itemName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                >
+                  <option value="">All Items</option>
+                  {availableItemNames.map(itemName => (
+                    <option key={itemName} value={itemName}>{itemName}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <button onClick={() => {

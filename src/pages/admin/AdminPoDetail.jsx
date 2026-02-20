@@ -45,16 +45,13 @@ export function AdminPoDetail() {
   const [lineItemPage, setLineItemPage] = useState(1);
   const [lineItemPageSize, setLineItemPageSize] = useState(10);
   const [lineItemFilters, setLineItemFilters] = useState({
-    status: 'ALL',
+    status: ['Pending', 'Partially Delivered'],
     priority: 'ALL',
-    month: 'ALL',
     category: 'ALL',
     itemName: '',
     style: 'ALL',
-    brand: 'ALL'
   });
   const [availableFilters, setAvailableFilters] = useState({
-    months: [],
     categories: [],
     itemNames: [],
     styles: [],
@@ -64,7 +61,8 @@ export function AdminPoDetail() {
   const [showProductPopup, setShowProductPopup] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'tiles'
-  const [showMonthDropdown, setShowMonthDropdown] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  // const [showMonthDropdown, setShowMonthDropdown] = useState(false);
   const monthDropdownRef = useRef(null);
 
   useEffect(() => {
@@ -83,15 +81,19 @@ export function AdminPoDetail() {
       if (showExportDropdown && !event.target.closest('.export-dropdown')) {
         setShowExportDropdown(false);
       }
-      // Close month dropdown when clicking outside
-      if (monthDropdownRef.current && !monthDropdownRef.current.contains(event.target)) {
-        setShowMonthDropdown(false);
+      // Close status dropdown when clicking outside
+      if (!event.target.closest('.status-dropdown-container')) {
+        setShowStatusDropdown(false);
       }
+      // Close month dropdown when clicking outside
+      // if (monthDropdownRef.current && !monthDropdownRef.current.contains(event.target)) {
+      //   setShowMonthDropdown(false);
+      // }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showExportDropdown]);
+  }, [showExportDropdown, showStatusDropdown]);
 
   // Add handler for product popup
   const handleProductClick = (item) => {
@@ -102,19 +104,12 @@ export function AdminPoDetail() {
   const extractAvailableFilters = () => {
     if (!po?.line_items) return;
 
-    const months = new Set();
     const categories = new Set();
     const itemNames = new Set();
     const styles = new Set();
-    const brands = new Set();
 
     po.line_items.forEach(item => {
-      // Extract months from created_at
-      if (item.created_at) {
-        const date = new Date(item.created_at);
-        const monthYear = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-        months.add(monthYear);
-      }
+
 
       // Extract categories (using region as category)
       if (item.region) categories.add(item.region);
@@ -125,62 +120,13 @@ export function AdminPoDetail() {
       // Extract styles
       if (item.style) styles.add(item.style);
 
-      // Extract brands (using color as brand)
-      if (item.color) brands.add(item.color);
     });
 
     setAvailableFilters({
-      months: Array.from(months).sort((a, b) => {
-        // Sort months chronologically (most recent first)
-        const dateA = new Date(a);
-        const dateB = new Date(b);
-        return dateB - dateA;
-      }),
       categories: Array.from(categories).sort(),
       itemNames: Array.from(itemNames).sort(),
       styles: Array.from(styles).sort(),
-      brands: Array.from(brands).sort()
     });
-  };
-
-  // Calculate date range for month filters
-  const getMonthDateRange = (filter) => {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999); // End of today
-
-    switch (filter) {
-      case 'last_month':
-        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0); // Last day of previous month
-        return {
-          start: lastMonthStart.toISOString().split('T')[0],
-          end: lastMonthEnd.toISOString().split('T')[0]
-        };
-
-      case 'last_2_months':
-        const twoMonthsStart = new Date(today.getFullYear(), today.getMonth() - 2, 1);
-        return {
-          start: twoMonthsStart.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
-        };
-
-      case 'last_3_months':
-        const threeMonthsStart = new Date(today.getFullYear(), today.getMonth() - 3, 1);
-        return {
-          start: threeMonthsStart.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
-        };
-
-      case 'last_6_months':
-        const sixMonthsStart = new Date(today.getFullYear(), today.getMonth() - 6, 1);
-        return {
-          start: sixMonthsStart.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
-        };
-
-      default:
-        return null;
-    }
   };
 
   const closeProductPopup = () => {
@@ -422,34 +368,20 @@ export function AdminPoDetail() {
   };
 
   const filteredLineItems = po?.line_items?.filter(item => {
-    const statusMatch = lineItemFilters.status === 'ALL' || item.status === lineItemFilters.status;
+    const statusMatch = lineItemFilters.status.length === 0 || lineItemFilters.status.includes(item.status);
     const priorityMatch = lineItemFilters.priority === 'ALL' || item.line_priority === lineItemFilters.priority;
-
-    // Month filter
-    let monthMatch = true;
-    if (lineItemFilters.month !== 'ALL' && lineItemFilters.month !== '' && item.created_at) {
-      const dateRange = getMonthDateRange(lineItemFilters.month);
-      if (dateRange) {
-        // Convert item.created_at to IST date for comparison
-        const itemDate = formatDateForInput(item.created_at);
-        monthMatch = itemDate >= dateRange.start && itemDate <= dateRange.end;
-      }
-    }
 
     // Category filter (using region)
     const categoryMatch = lineItemFilters.category === 'ALL' || item.region === lineItemFilters.category;
 
     // Item Name filter
     const itemNameMatch = lineItemFilters.itemName === '' ||
-      item.product_name?.toLowerCase().includes(lineItemFilters.itemName.toLowerCase());
+      item.product_name === lineItemFilters.itemName;
 
     // Style filter
     const styleMatch = lineItemFilters.style === 'ALL' || item.style === lineItemFilters.style;
 
-    // Brand filter (using color)
-    const brandMatch = lineItemFilters.brand === 'ALL' || item.color === lineItemFilters.brand;
-
-    return statusMatch && priorityMatch && monthMatch && categoryMatch && itemNameMatch && styleMatch && brandMatch;
+    return statusMatch && priorityMatch && categoryMatch && itemNameMatch && styleMatch;
   }) || [];
 
   const totalLineItems = filteredLineItems.length;
@@ -768,18 +700,104 @@ export function AdminPoDetail() {
               <Filter className="w-4 h-4 text-gray-400" />
 
               {/* Status Filter */}
-              <select
-                value={lineItemFilters.status}
-                onChange={(e) => setLineItemFilters({ ...lineItemFilters, status: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="Pending">Pending</option>
-                <option value="Partially Delivered">Partially Delivered</option>
-                <option value="Fully Delivered">Fully Delivered</option>
-                <option value="Closed">Closed</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
+              <div className="relative status-dropdown-container">
+                <button
+                  type="button"
+                  onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 min-w-[150px] text-left bg-white"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">
+                      {lineItemFilters.status.length === 0 ? 'Select statuses...' :
+                        lineItemFilters.status.length === 1 ? lineItemFilters.status[0] :
+                          `${lineItemFilters.status.length} statuses selected`}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  </div>
+                </button>
+
+                {showStatusDropdown && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                    <div className="p-2">
+                      <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={lineItemFilters.status.includes('Pending')}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setLineItemFilters({ ...lineItemFilters, status: [...lineItemFilters.status, 'Pending'] });
+                            } else {
+                              setLineItemFilters({ ...lineItemFilters, status: lineItemFilters.status.filter(s => s !== 'Pending') });
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">Pending</span>
+                      </label>
+                      <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={lineItemFilters.status.includes('Partially Delivered')}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setLineItemFilters({ ...lineItemFilters, status: [...lineItemFilters.status, 'Partially Delivered'] });
+                            } else {
+                              setLineItemFilters({ ...lineItemFilters, status: lineItemFilters.status.filter(s => s !== 'Partially Delivered') });
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">Partially Delivered</span>
+                      </label>
+                      <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={lineItemFilters.status.includes('Fully Delivered')}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setLineItemFilters({ ...lineItemFilters, status: [...lineItemFilters.status, 'Fully Delivered'] });
+                            } else {
+                              setLineItemFilters({ ...lineItemFilters, status: lineItemFilters.status.filter(s => s !== 'Fully Delivered') });
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">Fully Delivered</span>
+                      </label>
+                      <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={lineItemFilters.status.includes('Closed')}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setLineItemFilters({ ...lineItemFilters, status: [...lineItemFilters.status, 'Closed'] });
+                            } else {
+                              setLineItemFilters({ ...lineItemFilters, status: lineItemFilters.status.filter(s => s !== 'Closed') });
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">Closed</span>
+                      </label>
+                      <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={lineItemFilters.status.includes('Cancelled')}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setLineItemFilters({ ...lineItemFilters, status: [...lineItemFilters.status, 'Cancelled'] });
+                            } else {
+                              setLineItemFilters({ ...lineItemFilters, status: lineItemFilters.status.filter(s => s !== 'Cancelled') });
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">Cancelled</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Priority Filter */}
               <select
@@ -795,7 +813,7 @@ export function AdminPoDetail() {
               </select>
 
               {/* Month Filter */}
-              <div className="relative" ref={monthDropdownRef}>
+              {/* <div className="relative" ref={monthDropdownRef}>
                 <button
                   type="button"
                   onClick={() => setShowMonthDropdown(!showMonthDropdown)}
@@ -865,7 +883,7 @@ export function AdminPoDetail() {
                     </div>
                   </div>
                 )}
-              </div>
+              </div> */}
 
               {/* Category Filter */}
               <select
@@ -880,13 +898,16 @@ export function AdminPoDetail() {
               </select>
 
               {/* Item Name Filter */}
-              <input
-                type="text"
-                placeholder="Search item name..."
+              <select
                 value={lineItemFilters.itemName}
                 onChange={(e) => setLineItemFilters({ ...lineItemFilters, itemName: e.target.value })}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 w-48"
-              />
+              >
+                <option value="">All Items</option>
+                {availableFilters.itemNames.map(itemName => (
+                  <option key={itemName} value={itemName}>{itemName}</option>
+                ))}
+              </select>
 
               {/* Style Filter */}
               <select
@@ -901,7 +922,7 @@ export function AdminPoDetail() {
               </select>
 
               {/* Brand Filter */}
-              <select
+              {/* <select
                 value={lineItemFilters.brand}
                 onChange={(e) => setLineItemFilters({ ...lineItemFilters, brand: e.target.value })}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
@@ -910,18 +931,16 @@ export function AdminPoDetail() {
                 {availableFilters.brands.map(brand => (
                   <option key={brand} value={brand}>{brand}</option>
                 ))}
-              </select>
+              </select> */}
             </div>
 
             <button onClick={() => {
               setLineItemFilters({
                 status: 'ALL',
                 priority: 'ALL',
-                month: 'ALL',
                 category: 'ALL',
                 itemName: '',
                 style: 'ALL',
-                brand: 'ALL'
               });
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
