@@ -1,5 +1,6 @@
 import * as poService from "./po.service.js";
 import { BadRequestError, ForbiddenError } from "../../utils/httpErrors.js";
+import { generatePoExcel } from "./po.excel.service.js";
 
 export async function getPosAdmin(req, res, next) {
   try {
@@ -242,6 +243,27 @@ export async function updateLineItemPriority(req, res, next) {
       req.user,
     );
     res.json(lineItem);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function exportPoWithImages(req, res, next) {
+  try {
+    const { id } = req.params;
+    const excelBuffer = await generatePoExcel(id);
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=PO_${id}_with_images.xlsx`,
+    );
+    res.setHeader("Content-Length", excelBuffer.length); // ✅ ADD THIS
+
+    res.end(excelBuffer); // ✅ use end instead of send
   } catch (error) {
     next(error);
   }

@@ -156,97 +156,39 @@ export function VendorPoDetail() {
     showSuccess('PO data exported successfully!');
   };
 
-  const exportWithImage = () => {
+  const exportWithImage = async () => {
     if (!po) return;
 
-    // Group and sort by design code
-    const groupedItems = {};
-    const sortedItems = [...filteredLineItems].sort((a, b) => {
-      const designA = parseInt(a.design_code) || 0;
-      const designB = parseInt(b.design_code) || 0;
-      return designA - designB;
-    });
-
-    sortedItems.forEach(item => {
-      const designCode = item.design_code || 'Unknown';
-      if (!groupedItems[designCode]) {
-        groupedItems[designCode] = [];
-      }
-      groupedItems[designCode].push(item);
-    });
-
-    const designCodes = Object.keys(groupedItems);
-    const workbookData = [];
-
-    // Process each section individually with gaps
-    designCodes.forEach((designCode, index) => {
-      const items = groupedItems[designCode];
-
-      // Headers for this section
-      const headers = ['Product Name', 'Image', 'D.No', 'COLOR', 'POLISH', 'STYLE', 'SIZE', 'DMY7', 'DMY8', 'Qty'];
-
-      // Add headers row
-      workbookData.push(headers);
-
-      // Add data rows for this section
-      items.forEach((item) => {
-        // Debug logging
-        console.log('Item data:', {
-          combination_code: item.combination_code,
-          product_name: item.product_name,
-          design_code: item.design_code
-        });
-
-        const imageUrl = item.combination_code
-          ? `https://kushals-hq-prod.s3.amazonaws.com/images/${item.combination_code}.jpg`
-          : '';
-
-        console.log('Generated image URL:', imageUrl);
-
-        const row = [
-          item.product_name || '', // Product Name
-          imageUrl, // Image
-          item.design_code || '', // D.No
-          item.color || '', // COLOR
-          item.polish || '', // POLISH
-          item.style || '', // STYLE
-          item.size || '', // SIZE
-          'N/A', // DMY7
-          'N/A', // DMY8
-          item.quantity || 0 // Qty
-        ];
-
-        console.log('Excel row:', row);
-        workbookData.push(row);
+    try {
+      // Call backend API to generate Excel with embedded images
+      const response = await fetch(`/api/v1/vendor/pos/${po.id}/export-with-images`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
       });
 
-      // Add 2 blank rows between sections (except last)
-      if (index < designCodes.length - 1) {
-        workbookData.push(Array(10).fill('')); // First blank row
-        workbookData.push(Array(10).fill('')); // Second blank row
+      if (!response.ok) {
+        throw new Error('Failed to export Excel file');
       }
-    });
 
-    // Create Excel workbook
-    const worksheet = XLSX.utils.json_to_sheet(workbookData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "PO Data");
+      // Download the file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `PO_${po.po_number}_with_images.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
 
-    // Generate and download file
-    const excelBuffer = XLSX.write(workbook, { type: 'buffer' });
-    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `PO_${po.po_number}_with_images.xlsx`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setShowExportDropdown(false);
-    showSuccess('PO data with images exported successfully!');
+      setShowExportDropdown(false);
+      showSuccess('PO data with images exported successfully!');
+    } catch (error) {
+      console.error('Export error:', error);
+      showError('Failed to export Excel file');
+    }
   };
 
   // Calculate date range for month filters

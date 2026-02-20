@@ -16,6 +16,7 @@ adminRouter.get("/", poController.getPosAdmin);
 adminRouter.post("/import", poController.importPosFromCsv);
 adminRouter.get("/:id", poController.getPoById);
 adminRouter.get("/:id/history", poController.getPoHistory);
+adminRouter.get("/:id/export-with-images", poController.exportPoWithImages);
 adminRouter.put("/:id/priority", poController.updatePoPriority);
 adminRouter.put("/:id/status", poController.updatePoStatus);
 adminRouter.put("/:id/closure", poController.updatePoClosure);
@@ -34,6 +35,7 @@ vendorRouter.use(requireVendor);
 vendorRouter.get("/", poController.getPosVendor);
 vendorRouter.get("/:id", poController.getPoById);
 vendorRouter.get("/:id/history", poController.getPoHistory);
+vendorRouter.get("/:id/export-with-images", poController.exportPoWithImages);
 vendorRouter.post("/:id/accept", poController.acceptPo);
 vendorRouter.put(
   "/:poId/line-items/:lineItemId/expected-delivery-date",
