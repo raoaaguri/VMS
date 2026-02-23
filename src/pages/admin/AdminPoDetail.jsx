@@ -936,7 +936,7 @@ export function AdminPoDetail() {
 
             <button onClick={() => {
               setLineItemFilters({
-                status: 'ALL',
+                status: ['Pending', 'Partially Delivered'],
                 priority: 'ALL',
                 category: 'ALL',
                 itemName: '',
