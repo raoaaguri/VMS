@@ -1,17 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { TableCell, TableHeader } from '../../components/TableComponents';
 import { formatDate, formatPrice, formatCurrency } from '../../utils/formatters';
 import { api } from '../../config/api';
-import { Package, Filter, Eye, CheckCircle, AlertCircle } from 'lucide-react';
+import { Package, Filter, Eye, CheckCircle, AlertCircle, ChevronDown } from 'lucide-react';
 import { useSortableTable } from '../../hooks/useSortableTable';
 
-const STATUSES = ['Issued', 'Acknowledged', 'Partially Delivered', 'Fully Delivered', 'Closed', 'Cancelled'];
+const STATUSES = ['Pending', 'Partially Delivered', 'Fully Delivered', 'Closed', 'Cancelled'];
 
 const statusColors = {
-  Issued: 'bg-gray-100 text-gray-800',
-  Acknowledged: 'bg-blue-100 text-blue-800',
+  'Pending': 'bg-blue-100 text-blue-800',
   'Partially Delivered': 'bg-orange-100 text-orange-800',
   'Fully Delivered': 'bg-green-100 text-green-800',
   Closed: 'bg-purple-100 text-purple-800',
@@ -25,12 +24,14 @@ export function VendorDashboard() {
   const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(['Pending', 'Partially Delivered']);
   const [priorityFilter, setPriorityFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [availableTypes, setAvailableTypes] = useState([]);
   const [stats, setStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const statusDropdownRef = useRef(null);
 
   const navigate = useNavigate();
 
@@ -50,6 +51,23 @@ export function VendorDashboard() {
       setAvailableTypes(types.sort());
     }
   }, [pos]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+        setShowStatusDropdown(false);
+      }
+      // Close status dropdown when clicking outside
+      if (!event.target.closest('.status-dropdown-container')) {
+        setShowStatusDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -77,7 +95,7 @@ export function VendorDashboard() {
     try {
       setLoading(true);
       const params = {};
-      if (statusFilter) params.status = statusFilter;
+      if (statusFilter && statusFilter.length > 0) params.status = statusFilter;
       if (priorityFilter) params.priority = priorityFilter;
       if (typeFilter) params.type = typeFilter;
 
@@ -201,16 +219,78 @@ export function VendorDashboard() {
           <div className="flex items-center justify-between space-x-4 flex-wrap gap-2">
             <div className="flex items-center space-x-4 flex-wrap gap-2">
               <Filter className="w-5 h-5 text-gray-400" />
-              <select
-                value={statusFilter}
-                onChange={(e) => updateFilters({ ...{ status: e.target.value, priority: priorityFilter, type: typeFilter } })}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
-              >
-                <option value="">All Statuses</option>
-                {STATUSES.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
+              <div className="flex items-center space-x-2">
+                <div className="relative status-dropdown-container">
+                  <button
+                    type="button"
+                    onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 min-w-[150px] text-left bg-white"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">
+                        {statusFilter.length === 0 ? 'Select statuses...' :
+                          statusFilter.length === 1 ? statusFilter[0] :
+                            `${statusFilter.length} statuses selected`}
+                      </span>
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
+                    </div>
+                  </button>
+
+                  {showStatusDropdown && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                      <div className="p-2">
+                        <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={statusFilter.includes('Partially Delivered')}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setStatusFilter([...statusFilter, 'Partially Delivered']);
+                              } else {
+                                setStatusFilter(statusFilter.filter(s => s !== 'Partially Delivered'));
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm">Partially Delivered</span>
+                        </label>
+                        <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={statusFilter.includes('Pending')}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setStatusFilter([...statusFilter, 'Pending']);
+                              } else {
+                                setStatusFilter(statusFilter.filter(s => s !== 'Pending'));
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm">Pending</span>
+                        </label>
+                        {STATUSES.filter(status => !['Pending', 'Partially Delivered'].includes(status)).map(status => (
+                          <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={statusFilter.includes(status)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setStatusFilter([...statusFilter, status]);
+                                } else {
+                                  setStatusFilter(statusFilter.filter(s => s !== status));
+                                }
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm">{status}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* <select
                 value={priorityFilter}
@@ -234,7 +314,9 @@ export function VendorDashboard() {
               </select>
             </div>
             <button onClick={() => {
-              updateFilters({ status: '', priority: '', type: '' });
+              setStatusFilter(['Pending', 'Partially Delivered']);
+              setPriorityFilter('');
+              setTypeFilter('');
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
         </div>

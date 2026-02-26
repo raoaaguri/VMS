@@ -17,6 +17,7 @@ export async function getAdminLineItems(req, res, next) {
     // Decode URL-encoded status parameter
     const decodedStatus = status ? decodeURIComponent(status) : status;
 
+    const today = new Date().toISOString().split("T")[0];
     const params = [];
     let paramNum = 1;
     const conditions = [];
@@ -50,8 +51,23 @@ export async function getAdminLineItems(req, res, next) {
         conditions.push(`poli.status != $${paramNum++}`);
         params.push("DELIVERED");
       } else {
-        conditions.push(`poli.status = $${paramNum++}`);
-        params.push(decodedStatus);
+        // Handle multiple status values (comma-separated or array)
+        const statuses = Array.isArray(decodedStatus)
+          ? decodedStatus
+          : decodedStatus.includes(",")
+            ? decodedStatus
+                .split(",")
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0)
+            : [decodedStatus];
+
+        if (statuses.length > 0) {
+          const statusPlaceholders = statuses
+            .map(() => `$${paramNum++}`)
+            .join(",");
+          conditions.push(`poli.status IN (${statusPlaceholders})`);
+          params.push(...statuses);
+        }
       }
     }
 
@@ -149,8 +165,21 @@ export async function getVendorLineItems(req, res, next) {
         conditions.push(`poli.status != $${paramNum++}`);
         params.push("DELIVERED");
       } else {
-        conditions.push(`poli.status = $${paramNum++}`);
-        params.push(decodedStatus);
+        // Handle multiple status values (comma-separated string from frontend)
+        const statuses = decodedStatus.includes(",")
+          ? decodedStatus
+              .split(",")
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0)
+          : [decodedStatus];
+
+        if (statuses.length > 0) {
+          const statusPlaceholders = statuses
+            .map(() => `$${paramNum++}`)
+            .join(",");
+          conditions.push(`poli.status IN (${statusPlaceholders})`);
+          params.push(...statuses);
+        }
       }
     }
 

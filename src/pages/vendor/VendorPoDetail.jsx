@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { Toast, useToast } from '../../components/Toast';
@@ -43,7 +43,9 @@ export function VendorPoDetail() {
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [lineItemFilters, setLineItemFilters] = useState({ status: 'ALL', priority: 'ALL', month: 'ALL', itemName: '' });
+  const [lineItemFilters, setLineItemFilters] = useState({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', month: 'ALL', itemName: '' });
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const statusDropdownRef = useRef(null);
   const [availableFilters, setAvailableFilters] = useState({
     itemNames: [],
   });
@@ -64,6 +66,13 @@ export function VendorPoDetail() {
     const handleClickOutside = (event) => {
       if (showExportDropdown && !event.target.closest('.export-dropdown')) {
         setShowExportDropdown(false);
+      }
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+        setShowStatusDropdown(false);
+      }
+      // Close status dropdown when clicking outside
+      if (!event.target.closest('.status-dropdown-container')) {
+        setShowStatusDropdown(false);
       }
     };
 
@@ -449,7 +458,7 @@ export function VendorPoDetail() {
   };
 
   const filteredLineItems = (po?.line_items || []).filter(item => {
-    if (lineItemFilters.status !== 'ALL' && item.status !== lineItemFilters.status) return false;
+    if (lineItemFilters.status && lineItemFilters.status.length > 0 && !lineItemFilters.status.includes(item.status)) return false;
     if (lineItemFilters.priority !== 'ALL' && item.line_priority !== lineItemFilters.priority) return false;
     if (lineItemFilters.itemName !== '' && item.product_name !== lineItemFilters.itemName) return false;
 
@@ -818,18 +827,78 @@ export function VendorPoDetail() {
           <div className="flex gap-4 mb-4 items-center justify-between">
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-gray-400" />
-              <select
-                value={lineItemFilters.status}
-                onChange={(e) => setLineItemFilters({ ...lineItemFilters, status: e.target.value })}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="Pending">Pending</option>
-                <option value="Partially Delivered">Partially Delivered</option>
-                <option value="Fully Delivered">Fully Delivered</option>
-                <option value="Closed">Closed</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
+              <div className="flex items-center space-x-2">
+                <div className="relative status-dropdown-container">
+                  <button
+                    type="button"
+                    onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 min-w-[150px] text-left bg-white"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">
+                        {lineItemFilters.status.length === 0 ? 'Select statuses...' :
+                          lineItemFilters.status.length === 1 ? lineItemFilters.status[0] :
+                            `${lineItemFilters.status.length} statuses selected`}
+                      </span>
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
+                    </div>
+                  </button>
+
+                  {showStatusDropdown && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                      <div className="p-2">
+                        <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={lineItemFilters.status.includes('Partially Delivered')}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setLineItemFilters({ ...lineItemFilters, status: [...lineItemFilters.status, 'Partially Delivered'] });
+                              } else {
+                                setLineItemFilters({ ...lineItemFilters, status: lineItemFilters.status.filter(s => s !== 'Partially Delivered') });
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm">Partially Delivered</span>
+                        </label>
+                        <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={lineItemFilters.status.includes('Pending')}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setLineItemFilters({ ...lineItemFilters, status: [...lineItemFilters.status, 'Pending'] });
+                              } else {
+                                setLineItemFilters({ ...lineItemFilters, status: lineItemFilters.status.filter(s => s !== 'Pending') });
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm">Pending</span>
+                        </label>
+                        {STATUSES.filter(status => !['Pending', 'Partially Delivered'].includes(status)).map(status => (
+                          <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={lineItemFilters.status.includes(status)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setLineItemFilters({ ...lineItemFilters, status: [...lineItemFilters.status, status] });
+                                } else {
+                                  setLineItemFilters({ ...lineItemFilters, status: lineItemFilters.status.filter(s => s !== status) });
+                                }
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm">{status}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
               <select
                 value={lineItemFilters.priority}
                 onChange={(e) => setLineItemFilters({ ...lineItemFilters, priority: e.target.value })}
@@ -868,7 +937,7 @@ export function VendorPoDetail() {
               </select>
             </div>
             <button onClick={() => {
-              setLineItemFilters({ status: 'ALL', priority: 'ALL', month: 'ALL', itemName: '' });
+              setLineItemFilters({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', month: 'ALL', itemName: '' });
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 

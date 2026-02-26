@@ -8,7 +8,7 @@ import { Toast, useToast } from '../../components/Toast';
 import { useSortableTable } from '../../hooks/useSortableTable';
 import { Package, Filter, Eye, AlertCircle, Clock, CheckCircle, TrendingUp, ChevronDown } from 'lucide-react';
 
-const STATUSES = ['Draft', 'Issued', 'Acknowledged', 'Partially Delivered', 'Fully Delivered', 'Closed', 'Cancelled'];
+const STATUSES = ['Draft', 'Pending', 'Partially Delivered', 'Fully Delivered', 'Closed', 'Cancelled'];
 
 const priorityColors = {
   LOW: 'bg-gray-100 text-gray-800',
@@ -19,8 +19,7 @@ const priorityColors = {
 
 const statusColors = {
   Draft: 'bg-gray-100 text-gray-800',
-  Issued: 'bg-yellow-100 text-yellow-800',
-  Acknowledged: 'bg-blue-100 text-blue-800',
+  'Pending': 'bg-yellow-100 text-yellow-800',
   'Partially Delivered': 'bg-orange-100 text-orange-800',
   'Fully Delivered': 'bg-green-100 text-green-800',
   Closed: 'bg-purple-100 text-purple-800',
@@ -36,7 +35,7 @@ export function AdminDashboard() {
   const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState(['Acknowledged', 'Partially Delivered']);
+  const [statusFilter, setStatusFilter] = useState(['Pending', 'Partially Delivered']);
   const [typeFilter, setTypeFilter] = useState('');
   const [vendorFilter, setVendorFilter] = useState('');
   const [vendors, setVendors] = useState([]);
@@ -381,19 +380,19 @@ export function AdminDashboard() {
                         <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={statusFilter.includes('Acknowledged')}
+                            checked={statusFilter.includes('Pending')}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setStatusFilter([...statusFilter, 'Acknowledged']);
+                                setStatusFilter([...statusFilter, 'Pending']);
                               } else {
-                                setStatusFilter(statusFilter.filter(s => s !== 'Acknowledged'));
+                                setStatusFilter(statusFilter.filter(s => s !== 'Pending'));
                               }
                             }}
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
-                          <span className="text-sm">Acknowledged</span>
+                          <span className="text-sm">Pending</span>
                         </label>
-                        {STATUSES.filter(status => !['Acknowledged', 'Partially Delivered'].includes(status)).map(status => (
+                        {STATUSES.filter(status => !['Pending', 'Partially Delivered'].includes(status)).map(status => (
                           <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                             <input
                               type="checkbox"
@@ -456,7 +455,7 @@ export function AdminDashboard() {
               </div>
             </div>
             <button onClick={() => {
-              setStatusFilter(['Acknowledged', 'Partially Delivered']);
+              setStatusFilter(['Pending', 'Partially Delivered']);
               setTypeFilter('');
               setVendorFilter('');
               setVendorSearchTerm('');
