@@ -203,96 +203,89 @@ export function AdminPoDetail() {
   };
 
   const exportWithImage = () => {
-    if (!po) return;
+    if (!po) {
+      showError('No PO data available');
+      return;
+    }
 
-    // Group and sort by design code
-    const groupedItems = {};
-    const sortedItems = [...filteredLineItems].sort((a, b) => {
-      const designA = parseInt(a.design_code) || 0;
-      const designB = parseInt(b.design_code) || 0;
-      return designA - designB;
-    });
+    try {
+      setIsProcessing(true);
 
-    sortedItems.forEach(item => {
-      const designCode = item.design_code || 'Unknown';
-      if (!groupedItems[designCode]) {
-        groupedItems[designCode] = [];
+      // Use filteredLineItems which are already filtered by status, priority, category, etc.
+      const itemsToExport = filteredLineItems && filteredLineItems.length > 0
+        ? filteredLineItems
+        : po.line_items;
+
+      if (!itemsToExport || itemsToExport.length === 0) {
+        showError('No line items to export');
+        return;
       }
-      groupedItems[designCode].push(item);
-    });
 
-    const designCodes = Object.keys(groupedItems);
-    const workbookData = [];
-
-    // Process each section individually with gaps
-    designCodes.forEach((designCode, index) => {
-      const items = groupedItems[designCode];
-
-      // Headers for this section
-      const headers = ['Product Name', 'Image', 'D.No', 'COLOR', 'POLISH', 'STYLE', 'SIZE', 'DMY7', 'DMY8', 'Qty'];
-
-      // Add headers row
-      workbookData.push(headers);
-
-      // Add data rows for this section
-      items.forEach((item) => {
-        // Debug logging
-        console.log('Item data:', {
-          combination_code: item.combination_code,
-          product_name: item.product_name,
-          design_code: item.design_code
-        });
-
-        const imageUrl = item.combination_code
-          ? `https://kushals-hq-prod.s3.amazonaws.com/images/${item.combination_code}.jpg`
-          : '';
-
-        console.log('Generated image URL:', imageUrl);
-
-        const row = [
-          item.product_name || '', // Product Name
-          imageUrl, // Image
-          item.design_code || '', // D.No
-          item.color || '', // COLOR
-          item.polish || '', // POLISH
-          item.style || '', // STYLE
-          item.size || '', // SIZE
-          'N/A', // DMY7
-          'N/A', // DMY8
-          item.quantity || 0 // Qty
-        ];
-
-        console.log('Excel row:', row);
-        workbookData.push(row);
+      // Sort by design code
+      const sortedItems = [...itemsToExport].sort((a, b) => {
+        const designA = parseInt(a.design_code) || 0;
+        const designB = parseInt(b.design_code) || 0;
+        return designA - designB;
       });
 
-      // Add 2 blank rows between sections (except last)
-      if (index < designCodes.length - 1) {
-        workbookData.push(Array(10).fill('')); // First blank row
-        workbookData.push(Array(10).fill('')); // Second blank row
-      }
-    });
+      // Create simple array of objects for export
+      const exportData = sortedItems.map((item, index) => ({
+        'D.NO': item.design_code || '',
+        'PRODUCT NAME': item.product_name || '',
+        'COLOR': item.color || '',
+        'POLISH': item.polish || '',
+        'STYLE': item.style || '',
+        'SIZE': item.size || '',
+        'QTY': item.quantity || 0,
+      }));
 
-    // Create Excel workbook
-    const worksheet = XLSX.utils.json_to_sheet(workbookData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "PO Data");
+      console.log('Export data:', exportData);
 
-    // Generate and download file
-    const excelBuffer = XLSX.write(workbook, { type: 'buffer' });
-    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      // Convert to worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
 
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `PO_${po.po_number}_with_images.xlsx`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // Set column widths
+      worksheet['!cols'] = [
+        { wch: 12 },
+        { wch: 25 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 12 },
+        { wch: 10 }
+      ];
 
-    setShowExportDropdown(false);
-    showSuccess('PO data with images exported successfully!');
+      // Format headers with background
+      const headerStyle = {
+        fill: { fgColor: { rgb: 'FFC0C0C0' } },
+        font: { bold: true }
+      };
+
+      // Apply header styling
+      const headerKeys = Object.keys(exportData[0] || {});
+      headerKeys.forEach((key, idx) => {
+        const cellRef = `${String.fromCharCode(65 + idx)}1`;
+        if (worksheet[cellRef]) {
+          worksheet[cellRef].fill = { fgColor: { rgb: 'FFC0C0C0' } };
+          worksheet[cellRef].font = { bold: true };
+        }
+      });
+
+      // Create workbook and add sheet
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'PO Data');
+
+      // Write file
+      XLSX.writeFile(workbook, `PO_${po.po_number}_with_images.xlsx`);
+
+      setShowExportDropdown(false);
+      showSuccess('PO data with images exported successfully!');
+    } catch (err) {
+      console.error('Error exporting Excel:', err);
+      showError('Failed to export PO data with images: ' + err.message);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   useEffect(() => {

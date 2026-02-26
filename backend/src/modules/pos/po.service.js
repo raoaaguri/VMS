@@ -1225,3 +1225,40 @@ export async function importPosFromCsv(csvText, user) {
     errors,
   };
 }
+
+export async function generateGroupedExcelExport(poId) {
+  const po = await getPoById(poId);
+  
+  if (!po) {
+    throw new NotFoundError("Purchase order not found");
+  }
+
+  if (!po.line_items || po.line_items.length === 0) {
+    throw new BadRequestError("No line items to export");
+  }
+
+  // Sort by design_code
+  const sortedItems = po.line_items.sort((a, b) => {
+    const designA = parseInt(a.design_code) || 0;
+    const designB = parseInt(b.design_code) || 0;
+    return designA - designB;
+  });
+
+  // Group by design_code
+  const grouped = {};
+  sortedItems.forEach(item => {
+    if (!grouped[item.design_code]) {
+      grouped[item.design_code] = [];
+    }
+    grouped[item.design_code].push(item);
+  });
+
+  const groups = Object.values(grouped);
+  
+  // Return the data needed for frontend to generate Excel
+  return {
+    po,
+    groups,
+    sortedItems
+  };
+}

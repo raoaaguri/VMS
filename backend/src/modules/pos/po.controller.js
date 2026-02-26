@@ -270,3 +270,13 @@ export async function updateLineItemPriority(req, res, next) {
     next(error);
   }
 }
+
+export async function exportPoWithImages(req, res, next) {
+  try {
+    const { id } = req.params;
+    const exportData = await poService.generateGroupedExcelExport(id);
+    res.json(exportData);
+  } catch (error) {
+    next(error);
+  }
+}
