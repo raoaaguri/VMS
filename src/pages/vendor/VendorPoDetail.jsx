@@ -43,11 +43,12 @@ export function VendorPoDetail() {
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [lineItemFilters, setLineItemFilters] = useState({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', month: 'ALL', itemName: '' });
+  const [lineItemFilters, setLineItemFilters] = useState({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', month: 'ALL', itemName: '', category: 'ALL' });
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const statusDropdownRef = useRef(null);
   const [availableFilters, setAvailableFilters] = useState({
     itemNames: [],
+    categories: [],
   });
   const [lineItemPage, setLineItemPage] = useState(1);
   const [lineItemPageSize, setLineItemPageSize] = useState(10);
@@ -82,7 +83,7 @@ export function VendorPoDetail() {
 
   useEffect(() => {
     setLineItemPage(1);
-  }, [lineItemFilters.status, lineItemFilters.priority, lineItemFilters.month, lineItemFilters.itemName, lineItemPageSize]);
+  }, [lineItemFilters.status, lineItemFilters.priority, lineItemFilters.month, lineItemFilters.itemName, lineItemFilters.category, lineItemPageSize]);
 
   useEffect(() => {
     if (po?.line_items) {
@@ -105,14 +106,20 @@ export function VendorPoDetail() {
     if (!po?.line_items) return;
 
     const itemNames = new Set();
+    const categories = new Set();
 
     po.line_items.forEach(item => {
       // Extract item names
       if (item.product_name) itemNames.add(item.product_name);
+
+      // Extract categories
+      if (item.category) categories.add(item.category);
+      else if (item.region) categories.add(item.region); // Fallback to region if category is not set
     });
 
     setAvailableFilters({
       itemNames: Array.from(itemNames).sort(),
+      categories: Array.from(categories).sort(),
     });
   };
 
@@ -461,6 +468,12 @@ export function VendorPoDetail() {
     if (lineItemFilters.status && lineItemFilters.status.length > 0 && !lineItemFilters.status.includes(item.status)) return false;
     if (lineItemFilters.priority !== 'ALL' && item.line_priority !== lineItemFilters.priority) return false;
     if (lineItemFilters.itemName !== '' && item.product_name !== lineItemFilters.itemName) return false;
+
+    // Category filter
+    const categoryMatch = lineItemFilters.category === 'ALL' ||
+      (item.category && item.category === lineItemFilters.category) ||
+      (!item.category && item.region === lineItemFilters.category); // Fallback to region if category is not set
+    if (!categoryMatch) return false;
 
     // Month filter
     let monthMatch = true;
@@ -935,9 +948,21 @@ export function VendorPoDetail() {
                   <option key={itemName} value={itemName}>{itemName}</option>
                 ))}
               </select>
+
+              {/* Category Filter */}
+              <select
+                value={lineItemFilters.category}
+                onChange={(e) => setLineItemFilters({ ...lineItemFilters, category: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+              >
+                <option value="ALL">All Categories</option>
+                {availableFilters.categories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
             </div>
             <button onClick={() => {
-              setLineItemFilters({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', month: 'ALL', itemName: '' });
+              setLineItemFilters({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', month: 'ALL', itemName: '', category: 'ALL' });
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 

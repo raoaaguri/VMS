@@ -111,8 +111,9 @@ export function AdminPoDetail() {
     po.line_items.forEach(item => {
 
 
-      // Extract categories (using region as category)
-      if (item.region) categories.add(item.region);
+      // Extract categories
+      if (item.category) categories.add(item.category);
+      else if (item.region) categories.add(item.region); // Fallback to region if category is not set
 
       // Extract item names
       if (item.product_name) itemNames.add(item.product_name);
@@ -371,8 +372,10 @@ export function AdminPoDetail() {
     const statusMatch = lineItemFilters.status.length === 0 || lineItemFilters.status.includes(item.status);
     const priorityMatch = lineItemFilters.priority === 'ALL' || item.line_priority === lineItemFilters.priority;
 
-    // Category filter (using region)
-    const categoryMatch = lineItemFilters.category === 'ALL' || item.region === lineItemFilters.category;
+    // Category filter
+    const categoryMatch = lineItemFilters.category === 'ALL' ||
+      (item.category && item.category === lineItemFilters.category) ||
+      (!item.category && item.region === lineItemFilters.category); // Fallback to region if category is not set
 
     // Item Name filter
     const itemNameMatch = lineItemFilters.itemName === '' ||

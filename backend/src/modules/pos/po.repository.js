@@ -207,6 +207,7 @@ export async function findLineItems(poId) {
       item_code,
       order_no,
       item_name,
+      category,
       updated_at
     FROM purchase_order_line_items
     WHERE po_id = $1

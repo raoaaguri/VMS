@@ -113,6 +113,7 @@ export async function getAdminLineItems(req, res, next) {
         poli.line_priority,
         poli.expected_delivery_date,
         poli.status,
+        poli.category,
         CASE 
           WHEN poli.expected_delivery_date < CURRENT_DATE AND poli.status != 'DELIVERED' THEN true
             ELSE false
@@ -222,7 +223,8 @@ export async function getVendorLineItems(req, res, next) {
         poli.quantity,
         poli.line_priority,
         poli.expected_delivery_date,
-        poli.status
+        poli.status,
+        poli.category
       FROM purchase_order_line_items poli
       JOIN purchase_orders po ON poli.po_id = po.id
       ${whereClause}
