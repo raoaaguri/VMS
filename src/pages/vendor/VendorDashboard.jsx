@@ -341,6 +341,7 @@ export function VendorDashboard() {
                     <TableHeader columnName="po_date">PO Date</TableHeader>
                     <TableHeader columnName="type">Type</TableHeader>
                     <TableHeader columnName="status">Status</TableHeader>
+                    <TableHeader columnName="vendor_status">Vendor Status</TableHeader>
                     <TableHeader columnName="line_items">Line Items</TableHeader>
                     <TableHeader columnName="actions">Actions</TableHeader>
                   </tr>
@@ -348,7 +349,7 @@ export function VendorDashboard() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {pos.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
                         No purchase orders found
                       </td>
                     </tr>
@@ -361,6 +362,14 @@ export function VendorDashboard() {
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[po.status]}`}>
                             {po.status.charAt(0) + po.status.slice(1).toLowerCase()}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={`text-sm font-medium rounded-full px-2 py-1 ${po.vendor_status === 'acknowledged'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                            {po.vendor_status === 'acknowledged' ? 'acknowledged' : 'not yet acknowledged'}
                           </span>
                         </td>
                         <TableCell value={po.line_items_count} columnName="line_items" />

@@ -648,7 +648,7 @@ export function VendorPoDetail() {
                 )}
               </div>
 
-              {po.status === 'Issued' && (
+              {po.vendor_status !== 'acknowledged' && (
                 <button
                   onClick={handleAcceptPo}
                   className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"

@@ -100,22 +100,24 @@ export async function acceptPo(id, user) {
 
   if (!po) throw new NotFoundError("Purchase order not found");
 
-  if (po.status !== "Issued") {
-    throw new BadRequestError("PO can only be accepted when in Issued status");
+  if (po.status !== "Pending") {
+    throw new BadRequestError("PO can only be accepted when in Pending status");
   }
 
-  // Update PO status directly without requiring line item updates
-  await poRepository.update(id, { status: "Acknowledged" });
+  // Update only vendor status when vendor accepts PO
+  await poRepository.update(id, {
+    vendor_status: "acknowledged",
+  });
 
   if (user) {
     await poRepository.createPoHistory({
       po_id: id,
       changed_by_user_id: user.id,
       changed_by_role: user.role,
-      action_type: "STATUS_CHANGE",
-      field_name: "status",
-      old_value: "Issued",
-      new_value: "Acknowledged",
+      action_type: "VENDOR_ACCEPT",
+      field_name: "vendor_status",
+      old_value: null,
+      new_value: "acknowledged",
     });
   }
 

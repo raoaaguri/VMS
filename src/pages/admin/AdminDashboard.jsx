@@ -485,6 +485,7 @@ export function AdminDashboard() {
                     <TableHeader columnName="vendor">Vendor</TableHeader>
                     <TableHeader columnName="type">Type</TableHeader>
                     <TableHeader columnName="status">Status</TableHeader>
+                    <TableHeader columnName="vendor_status">Vendor Status</TableHeader>
                     <TableHeader columnName="line_items">Line Items</TableHeader>
                     <TableHeader columnName="actions">Actions</TableHeader>
                   </tr>
@@ -492,7 +493,7 @@ export function AdminDashboard() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {pos.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
                         No purchase orders found
                       </td>
                     </tr>
@@ -508,6 +509,14 @@ export function AdminDashboard() {
                           <td className="px-4 py-3 whitespace-nowrap">
                             <span className={`text-sm font-medium rounded-full px-2 py-1 ${statusColors[po.status]}`}>
                               {po.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className={`text-sm font-medium rounded-full px-2 py-1 ${po.vendor_status === 'acknowledged'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                              {po.vendor_status === 'acknowledged' ? 'acknowledged' : 'not yet acknowledged'}
                             </span>
                           </td>
                           <td className={`p-4 whitespace-nowrap text-sm ${overdue ? 'bg-red-500 text-white' : 'hover:bg-gray-50'}`}>
