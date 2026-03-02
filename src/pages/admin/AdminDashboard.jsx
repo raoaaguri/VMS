@@ -513,8 +513,8 @@ export function AdminDashboard() {
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <span className={`text-sm font-medium rounded-full px-2 py-1 ${po.vendor_status === 'acknowledged'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-yellow-100 text-yellow-800'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-orange-400 text-white'
                               }`}>
                               {po.vendor_status === 'acknowledged' ? 'acknowledged' : 'not yet acknowledged'}
                             </span>
