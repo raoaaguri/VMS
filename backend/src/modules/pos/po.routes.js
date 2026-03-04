@@ -8,6 +8,7 @@ import {
 
 const adminRouter = express.Router();
 const vendorRouter = express.Router();
+const publicRouter = express.Router();
 
 adminRouter.use(authMiddleware);
 adminRouter.use(requireAdmin);
@@ -28,6 +29,9 @@ adminRouter.post(
   poController.importPoLineItemsFromCsv,
 );
 
+// Public route for creating POs (no auth required)
+publicRouter.post("/", poController.createPo);
+
 vendorRouter.use(authMiddleware);
 vendorRouter.use(requireVendor);
 
@@ -44,4 +48,4 @@ vendorRouter.put(
   poController.updateLineItemStatus,
 );
 
-export { adminRouter, vendorRouter };
+export { adminRouter, vendorRouter, publicRouter };

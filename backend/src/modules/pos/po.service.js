@@ -6,6 +6,10 @@ import {
 } from "../../utils/httpErrors.js";
 import { query, transaction } from "../../config/db.js";
 
+export async function findByPoNumber(poNumber) {
+  return await poRepository.findByPoNumber(poNumber);
+}
+
 export async function getAllPos(filters = {}, limit = null, offset = null) {
   return await poRepository.findAll(filters, limit, offset);
 }
@@ -31,13 +35,13 @@ export async function createPo(poData, lineItemsData) {
 
   const po = await poRepository.create({
     ...poData,
-    status: "Issued",
+    status: "Pending",
   });
 
   const lineItems = lineItemsData.map((item) => ({
     ...item,
     po_id: po.id,
-    status: "CREATED",
+    status: "Pending",
   }));
 
   await poRepository.createLineItems(lineItems);

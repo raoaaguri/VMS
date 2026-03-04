@@ -7,6 +7,7 @@ import publicSignupRoutes from "./modules/vendors/public-signup.routes.js";
 import {
   adminRouter as adminPoRoutes,
   vendorRouter as vendorPoRoutes,
+  publicRouter as publicPoRoutes,
 } from "./modules/pos/po.routes.js";
 import {
   adminRouter as adminLineItemRoutes,
@@ -31,7 +32,14 @@ import { getAllHistory } from "./modules/pos/po.controller.js";
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "*", // Allow all origins
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: false, // No credentials needed for public API
+  }),
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -49,6 +57,7 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/admin/vendors", vendorRoutes);
 app.use("/api/v1/admin/pos", adminPoRoutes);
+app.use("/api/v1/public/pos", publicPoRoutes); // Public route for creating POs
 app.use("/api/v1/admin/line-items", adminLineItemRoutes);
 app.use("/api/v1/admin/dashboard", adminDashboardRoutes);
 app.use("/api/v1/vendor/pos", vendorPoRoutes);

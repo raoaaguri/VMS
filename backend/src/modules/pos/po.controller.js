@@ -120,6 +120,30 @@ export async function getPosVendor(req, res, next) {
   }
 }
 
+export async function createPo(req, res, next) {
+  try {
+    const { po, line_items } = req.body;
+
+    // Validate required fields
+    if (!po || !line_items || !Array.isArray(line_items)) {
+      return next(new BadRequestError("PO data and line items are required"));
+    }
+
+    // Check if PO number already exists
+    const existingPo = await poService.findByPoNumber(po.po_number);
+    if (existingPo) {
+      return next(new BadRequestError("PO number already exists"));
+    }
+
+    // Create the PO with line items
+    const newPo = await poService.createPo(po, line_items);
+
+    res.status(201).json(newPo);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getPoById(req, res, next) {
   try {
     const po = await poService.getPoById(req.params.id);

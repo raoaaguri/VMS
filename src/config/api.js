@@ -44,7 +44,8 @@ export async function apiRequest(endpoint, options = {}) {
     ...options.headers,
   };
 
-  if (token) {
+  // Only add auth token if not a public endpoint
+  if (!endpoint.includes("/api/v1/public/") && token) {
     headers.Authorization = `Bearer ${token}`;
   }
 
@@ -360,5 +361,13 @@ export const api = {
     apiRequest("/api/v1/public/vendor-signup", {
       method: "POST",
       body: JSON.stringify(vendorData),
+    }),
+
+  // Public PO creation (no auth required)
+  publicCreatePo: (poData) =>
+    apiRequest("/api/v1/public/pos", {
+      method: "POST",
+      body: JSON.stringify(poData),
+      // No auth token needed for public endpoint
     }),
 };
