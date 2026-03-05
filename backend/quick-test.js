@@ -9,11 +9,11 @@ async function quickTest() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         po: {
-          po_number: "QUICK_TEST",
-          vendor_id: "3",
+          po_number: "QUICK_TEST_" + Date.now(),
+          vendor_code: "GLOB001", // Use vendor_code instead of vendor_id
           type: "NEW_ITEMS",
           priority: "MEDIUM",
-          po_date: "2026-03-03",
+          po_date: "2026-03-05",
         },
         line_items: [
           {

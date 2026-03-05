@@ -26,6 +26,19 @@ export async function getPoById(id) {
   };
 }
 
+export async function findVendorByCode(vendorCode) {
+  const result = await query(
+    "SELECT id, code, name FROM vendors WHERE code = $1",
+    [vendorCode],
+  );
+
+  if (result.length === 0) {
+    throw new BadRequestError("Invalid vendor code");
+  }
+
+  return result[0];
+}
+
 export async function createPo(poData, lineItemsData) {
   const existingPo = await poRepository.findByPoNumber(poData.po_number);
 
@@ -33,10 +46,20 @@ export async function createPo(poData, lineItemsData) {
     throw new BadRequestError("PO number already exists");
   }
 
-  const po = await poRepository.create({
-    ...poData,
+  // Find vendor by code and get internal vendor_id
+  const vendor = await findVendorByCode(poData.vendor_code);
+
+  // Prepare PO data with only valid fields for purchase_orders table
+  const poCreateData = {
+    po_number: poData.po_number,
+    po_date: poData.po_date,
+    priority: poData.priority,
+    type: poData.type,
+    vendor_id: vendor.id, // Use internal vendor_id
     status: "Pending",
-  });
+  };
+
+  const po = await poRepository.create(poCreateData);
 
   const lineItems = lineItemsData.map((item) => ({
     ...item,

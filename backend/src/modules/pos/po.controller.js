@@ -124,9 +124,37 @@ export async function createPo(req, res, next) {
   try {
     const { po, line_items } = req.body;
 
-    // Validate required fields
     if (!po || !line_items || !Array.isArray(line_items)) {
       return next(new BadRequestError("PO data and line items are required"));
+    }
+
+    if (!po.vendor_code) {
+      return next(new BadRequestError("vendor_code is required"));
+    }
+
+    // Validate mandatory line item fields
+    for (const [index, item] of line_items.entries()) {
+      if (!item.design_code) {
+        return next(
+          new BadRequestError(
+            `design_code is required for line item ${index + 1}`,
+          ),
+        );
+      }
+      if (!item.combination_code) {
+        return next(
+          new BadRequestError(
+            `combination_code is required for line item ${index + 1}`,
+          ),
+        );
+      }
+      if (!item.category) {
+        return next(
+          new BadRequestError(
+            `category is required for line item ${index + 1}`,
+          ),
+        );
+      }
     }
 
     // Check if PO number already exists
@@ -135,9 +163,7 @@ export async function createPo(req, res, next) {
       return next(new BadRequestError("PO number already exists"));
     }
 
-    // Create the PO with line items
     const newPo = await poService.createPo(po, line_items);
-
     res.status(201).json(newPo);
   } catch (error) {
     next(error);
