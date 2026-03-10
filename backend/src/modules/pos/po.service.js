@@ -1,3 +1,4 @@
+import fetch from "node-fetch";
 import * as poRepository from "./po.repository.js";
 import {
   NotFoundError,
@@ -5,6 +6,35 @@ import {
   ForbiddenError,
 } from "../../utils/httpErrors.js";
 import { query, transaction } from "../../config/db.js";
+
+const EXTERNAL_PORTAL_BASE_URL = "https://ditos.technoboost.in";
+const DELIVERY_DATE_TOKEN =
+  "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.-HW681gJT1xI_2L8j0hb_yXjuNGUv4PRXOc39Vt3vbA";
+
+async function notifyExternalPortal(endpoint, payload) {
+  try {
+    const response = await fetch(`${EXTERNAL_PORTAL_BASE_URL}${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${DELIVERY_DATE_TOKEN}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      console.error(
+        `Failed to notify external portal: ${endpoint}`,
+        await response.text(),
+      );
+    } else {
+      console.log(`Successfully notified external portal: ${endpoint}`);
+    }
+  } catch (error) {
+    console.error(`Error notifying external portal: ${endpoint}`, error);
+  }
+}
+
 
 export async function findByPoNumber(poNumber) {
   return await poRepository.findByPoNumber(poNumber);
@@ -148,6 +178,13 @@ export async function acceptPo(id, user) {
     });
   }
 
+  // Notify external portal asynchronously
+  notifyExternalPortal("/api/v1/purchase-order/purchase-order/status", {
+    poNumber: po.po_number,
+    poStatusId: null,
+    poStatusName: "acknowledged",
+  });
+
   return await getPoById(id);
 }
 
@@ -214,7 +251,86 @@ export async function updateLineItemExpectedDate(
     });
   }
 
+  // Notify external portal asynchronously
+  const po = await poRepository.findById(poId);
+  if (po) {
+    notifyExternalPortal(
+      "/api/v1/purchase-order/purchase-order/expected-delivery-date",
+      {
+        poNumber: po.po_number,
+        combinationNumber: lineItem.combination_code || null,
+        expectedDeliveryDate: expectedDeliveryDate,
+      },
+    );
+  }
+
   return updatedItem;
+}
+
+export async function updatePoExpectedDateBatch(
+  poId,
+  lineItemId,
+  expectedDeliveryDate,
+  user,
+) {
+  // If lineItemId is provided, just call the existing single update logic
+  if (lineItemId) {
+    return await updateLineItemExpectedDate(
+      poId,
+      lineItemId,
+      expectedDeliveryDate,
+      user,
+    );
+  }
+
+  // If lineItemId is null/absent, update ALL items for this PO
+  // First, verify access
+  const po = await poRepository.findById(poId);
+  if (!po) throw new NotFoundError("Purchase order not found");
+
+  if (user && user.role === "VENDOR") {
+    if (String(po.vendor_id).trim() !== String(user.vendor_id).trim()) {
+      throw new ForbiddenError(
+        "You do not have permission to update this purchase order",
+      );
+    }
+  }
+
+  const lineItems = await poRepository.findLineItems(poId);
+  const updatePromises = lineItems.map((item) => {
+    if (item.status === "DELIVERED") return Promise.resolve();
+    
+    return poRepository.updateLineItem(item.id, {
+      expected_delivery_date: expectedDeliveryDate,
+    }).then(async (updatedItem) => {
+      // Record history for each changed item
+      await poRepository.createLineItemHistory({
+        po_id: poId,
+        line_item_id: item.id,
+        changed_by_user_id: user.id,
+        changed_by_role: user.role,
+        action_type: "DATE_CHANGE",
+        field_name: "expected_delivery_date",
+        old_value: item.expected_delivery_date,
+        new_value: expectedDeliveryDate,
+      });
+      return updatedItem;
+    });
+  });
+
+  await Promise.all(updatePromises);
+
+  // Notify external portal asynchronously
+  notifyExternalPortal(
+    "/api/v1/purchase-order/purchase-order/expected-delivery-date",
+    {
+      poNumber: po.po_number,
+      combinationNumber: null,
+      expectedDeliveryDate: expectedDeliveryDate,
+    },
+  );
+
+  return { success: true, message: "All line items updated" };
 }
 
 export async function updateLineItemStatus(poId, lineItemId, status, user) {
@@ -1252,5 +1368,34 @@ export async function importPosFromCsv(csvText, user) {
     inserted_count: inserted,
     failed_count: errors.length,
     errors,
+  };
+}
+
+export async function updatePoPriorityBatch(poId, lineItemId, priority, user) {
+  // If lineItemId is provided, just call the existing single update logic
+  if (lineItemId) {
+    return await updateLineItemPriority(poId, lineItemId, priority, user);
+  }
+
+  // If lineItemId is null, update PO priority AND ALL line items
+  const po = await poRepository.findById(poId);
+  if (!po) throw new NotFoundError("Purchase order not found");
+
+  // Update PO priority
+  await updatePoPriority(poId, priority, user);
+
+  // Update all line items priority
+  const lineItems = await poRepository.findLineItems(poId);
+  const updatePromises = lineItems.map((item) => {
+    // Skip already delivered items to avoid errors
+    if (item.status === "DELIVERED") return Promise.resolve();
+    return updateLineItemPriority(poId, item.id, priority, user);
+  });
+
+  await Promise.all(updatePromises);
+
+  return {
+    success: true,
+    message: "Priority updated for PO and all line items",
   };
 }

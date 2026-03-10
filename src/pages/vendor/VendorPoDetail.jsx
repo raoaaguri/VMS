@@ -372,6 +372,7 @@ export function VendorPoDetail() {
   const handleAcceptPo = async () => {
     try {
       setIsProcessing(true);
+
       await api.vendor.acceptPo(id);
       showSuccess('PO accepted successfully!');
       await loadPo();
@@ -384,16 +385,17 @@ export function VendorPoDetail() {
     }
   };
 
+
   const handleUpdatePoExpectedDate = async (newDate) => {
     try {
       setIsProcessing(true);
 
-      // Update all line items with the new expected date
-      const updatePromises = po.line_items.map(item =>
-        api.vendor.updateLineItemExpectedDate(id, item.id, newDate)
-      );
-
-      await Promise.all(updatePromises);
+      // Backend now handles both internal update and external notification
+      await api.vendor.updatePoExpectedDateBatch({
+        po_id: id,
+        line_items_id: null,
+        expected_date: newDate
+      });
 
       // Reload PO data to get updated state
       await loadPo();
@@ -414,7 +416,13 @@ export function VendorPoDetail() {
     try {
       setIsProcessing(true);
       setUpdatingItemId(lineItemId);
-      await api.vendor.updateLineItemExpectedDate(id, lineItemId, date);
+      
+      // Use the new batch API for single item as well
+      await api.vendor.updatePoExpectedDateBatch({
+        po_id: id,
+        line_items_id: lineItemId,
+        expected_date: date
+      });
 
       // Update local state immediately to show the change
       setPo(prevPo => ({

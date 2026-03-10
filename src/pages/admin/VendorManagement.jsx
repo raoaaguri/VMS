@@ -116,12 +116,12 @@ export function VendorManagement() {
     const userData = {
       name: formData.get('name'),
       email: formData.get('email'),
-      password: formData.get('password')
+      password: 'vendor123'
     };
 
     try {
       await api.admin.createVendorUser(showUserForm, userData);
-      setSuccess('Vendor user created successfully');
+      setSuccess('Vendor user created successfully. Default password: vendor123');
       setShowUserForm(null);
     } catch (err) {
       setError(err.message);
@@ -456,16 +456,8 @@ export function VendorManagement() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Password *
-                    </label>
-                    <input
-                      type="password"
-                      name="password"
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-700">
+                    🔑 Default password <strong>vendor123</strong> will be set automatically.
                   </div>
 
                   <div className="flex space-x-3 pt-4">

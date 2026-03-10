@@ -250,6 +250,11 @@ export const api = {
         method: "PUT",
         body: JSON.stringify({ priority }),
       }),
+    updatePoPriorityBatch: (data) =>
+      apiRequest("/api/v1/admin/pos/priority-batch", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
     updatePoClosure: (id, closureData) =>
       apiRequest(`/api/v1/admin/pos/${id}/closure`, {
         method: "PUT",
@@ -346,6 +351,11 @@ export const api = {
           body: JSON.stringify({ expected_delivery_date: date }),
         },
       ),
+    updatePoExpectedDateBatch: (data) =>
+      apiRequest("/api/v1/vendor/pos/expected-delivery-date", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
     updateLineItemStatus: (poId, lineItemId, status) =>
       apiRequest(`/api/v1/vendor/pos/${poId}/line-items/${lineItemId}/status`, {
         method: "PUT",

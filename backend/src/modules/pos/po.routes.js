@@ -20,6 +20,7 @@ adminRouter.get("/:id/history", poController.getPoHistory);
 adminRouter.put("/:id/priority", poController.updatePoPriority);
 adminRouter.put("/:id/status", poController.updatePoStatus);
 adminRouter.put("/:id/closure", poController.updatePoClosure);
+adminRouter.put("/priority-batch", poController.updatePoPriorityBatch);
 adminRouter.put(
   "/:poId/line-items/:lineItemId/priority",
   poController.updateLineItemPriority,
@@ -42,6 +43,10 @@ vendorRouter.post("/:id/accept", poController.acceptPo);
 vendorRouter.put(
   "/:poId/line-items/:lineItemId/expected-delivery-date",
   poController.updateLineItemExpectedDate,
+);
+vendorRouter.put(
+  "/expected-delivery-date",
+  poController.updatePoExpectedDateBatch,
 );
 vendorRouter.put(
   "/:poId/line-items/:lineItemId/status",

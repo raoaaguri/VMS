@@ -328,21 +328,21 @@ export function AdminPoDetail() {
   const handleUpdatePoPriority = async (priority) => {
     try {
       setIsProcessing(true);
-      await api.admin.updatePoPriority(id, priority);
 
-      // Update all line items priority to match PO priority
-      if (po?.line_items) {
-        const updatePromises = po.line_items.map(lineItem =>
-          api.admin.updateLineItemPriority(id, lineItem.id, priority)
-        );
-        await Promise.all(updatePromises);
-      }
+      // Use the new batch API to update PO and all line items in one call
+      await api.admin.updatePoPriorityBatch({
+        po_id: id,
+        line_items_id: null,
+        priority: priority,
+      });
 
       // Reload PO data to get updated status from server
       const updatedPo = await api.admin.getPoById(id);
       setPo(updatedPo);
       setEditingPoPriority(false);
-      showSuccess('PO and all line items priority updated successfully!');
+      showSuccess(
+        "PO and all line items priority updated successfully!",
+      );
     } catch (err) {
       showError(err.message);
       setError(err.message);
@@ -354,12 +354,19 @@ export function AdminPoDetail() {
   const handleUpdateLineItemPriority = async (lineItemId, priority) => {
     try {
       setIsProcessing(true);
-      await api.admin.updateLineItemPriority(id, lineItemId, priority);
+
+      // Use the new batch API for single item as well
+      await api.admin.updatePoPriorityBatch({
+        po_id: id,
+        line_items_id: lineItemId,
+        priority: priority,
+      });
+
       // Reload PO data to get the updated status from server
       const updatedPo = await api.admin.getPoById(id);
       setPo(updatedPo);
       setEditingLineItem(null);
-      showSuccess('Line item priority updated successfully!');
+      showSuccess("Line item priority updated successfully!");
     } catch (err) {
       showError(err.message);
       setError(err.message);

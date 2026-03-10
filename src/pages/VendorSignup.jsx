@@ -10,6 +10,7 @@ export default function VendorSignup() {
 
   const [formData, setFormData] = useState({
     vendorName: '',
+    vendorCode: '',
     contactPerson: '',
     contactEmail: '',
     contactPhone: '',
@@ -31,6 +32,12 @@ export default function VendorSignup() {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    if (!formData.vendorCode.trim()) {
+      setError('Vendor Code is required');
+      setLoading(false);
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -131,6 +138,22 @@ export default function VendorSignup() {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="ABC Corporation"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="vendorCode" className="block text-sm font-medium text-gray-700 mb-1">
+                  Vendor Code <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="vendorCode"
+                  name="vendorCode"
+                  type="text"
+                  required
+                  value={formData.vendorCode}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. VND-001"
                 />
               </div>
 

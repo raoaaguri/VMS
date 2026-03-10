@@ -1,12 +1,13 @@
 import bcrypt from "bcryptjs";
 import { getDbClient } from "../../config/db.js";
 import { BadRequestError } from "../../utils/httpErrors.js";
-import { generateNextVendorCode } from "./vendor.repository.js";
+
 
 export const publicSignup = async (req, res, next) => {
   try {
     const {
       vendorName,
+      vendorCode,
       contactPerson,
       contactEmail,
       contactPhone,
@@ -18,6 +19,7 @@ export const publicSignup = async (req, res, next) => {
 
     if (
       !vendorName ||
+      !vendorCode ||
       !contactPerson ||
       !contactEmail ||
       !password ||
@@ -54,8 +56,17 @@ export const publicSignup = async (req, res, next) => {
         throw new BadRequestError("Email already registered");
       }
 
-      // Generate vendor code (must be non-null per schema)
-      const vendorCode = await generateNextVendorCode();
+      // Check if vendor code already exists
+      const { data: existingVendor, error: vendorCodeCheckError } = await db
+        .from("vendors")
+        .select("id")
+        .eq("code", vendorCode)
+        .maybeSingle();
+
+      if (vendorCodeCheckError) throw vendorCodeCheckError;
+      if (existingVendor) {
+        throw new BadRequestError("Vendor code already exists");
+      }
 
       // Create vendor
       const { data: vendorData, error: vendorError } = await db

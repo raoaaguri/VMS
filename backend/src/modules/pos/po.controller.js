@@ -246,6 +246,27 @@ export async function updateLineItemExpectedDate(req, res, next) {
   }
 }
 
+export async function updatePoExpectedDateBatch(req, res, next) {
+  try {
+    const { po_id, line_items_id, expected_date } = req.body;
+    
+    if (!po_id || !expected_date) {
+      throw new BadRequestError("po_id and expected_date are required");
+    }
+
+    const result = await poService.updatePoExpectedDateBatch(
+      po_id,
+      line_items_id,
+      expected_date,
+      req.user
+    );
+    
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function updateLineItemStatus(req, res, next) {
   try {
     const { status } = req.body;
@@ -316,6 +337,27 @@ export async function updateLineItemPriority(req, res, next) {
       req.user,
     );
     res.json(lineItem);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updatePoPriorityBatch(req, res, next) {
+  try {
+    const { po_id, line_items_id, priority } = req.body;
+
+    if (!po_id || !priority) {
+      throw new BadRequestError("po_id and priority are required");
+    }
+
+    const result = await poService.updatePoPriorityBatch(
+      po_id,
+      line_items_id,
+      priority,
+      req.user,
+    );
+
+    res.json(result);
   } catch (error) {
     next(error);
   }
