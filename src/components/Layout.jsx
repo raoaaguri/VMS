@@ -27,9 +27,7 @@ export function Layout({ children, role }) {
     { path: '/vendor/history', label: 'History', icon: History },
   ];
 
-  // Prefer explicit `role` prop, otherwise derive from authenticated user
   const resolvedRole = role || (user?.role === 'ADMIN' ? 'admin' : 'vendor');
-
   const menuItems = resolvedRole === 'admin' ? adminMenuItems : vendorMenuItems;
 
   return (
@@ -76,6 +74,7 @@ export function Layout({ children, role }) {
 
             <div className="flex items-center space-x-4">
               <SessionStatus />
+              
               <button
                 onClick={handleLogout}
                 className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"

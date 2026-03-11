@@ -5,7 +5,7 @@ export async function findById(id) {
 
   const { data, error } = await db
     .from('users')
-    .select('id, name, email, role, vendor_id, created_at, updated_at')
+    .select('id, name, email, password_hash, role, vendor_id, created_at, updated_at')
     .eq('id', id)
     .maybeSingle();
 

@@ -4,6 +4,7 @@ import authRoutes from "./modules/auth/auth.routes.js";
 import userRoutes from "./modules/users/user.routes.js";
 import vendorRoutes from "./modules/vendors/vendor.routes.js";
 import publicSignupRoutes from "./modules/vendors/public-signup.routes.js";
+import profileRoutes from "./modules/users/profile.routes.js";
 import {
   adminRouter as adminPoRoutes,
   vendorRouter as vendorPoRoutes,
@@ -55,6 +56,7 @@ app.get("/api/v1/health", (req, res) => {
 app.use("/api/v1/public", publicSignupRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/profile", profileRoutes);
 app.use("/api/v1/admin/vendors", vendorRoutes);
 app.use("/api/v1/admin/pos", adminPoRoutes);
 app.use("/api/v1/public/pos", publicPoRoutes); // Public route for creating POs

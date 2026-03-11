@@ -35,6 +35,38 @@ async function notifyExternalPortal(endpoint, payload) {
   }
 }
 
+async function notifyPriorityUpdate(poNumber, combinationNumber, priority) {
+  try {
+    const response = await fetch(
+      `${EXTERNAL_PORTAL_BASE_URL}/api/v1/purchase-order/purchase-order/priority`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${DELIVERY_DATE_TOKEN}`,
+        },
+        body: JSON.stringify({
+          poNumber: poNumber,
+          combinationNumber: combinationNumber,
+          priorityName: priority,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      console.error(
+        `Failed to notify priority update: ${poNumber}`,
+        await response.text(),
+      );
+    } else {
+      console.log(
+        `Successfully notified priority update: ${poNumber}, combination: ${combinationNumber}, priority: ${priority}`,
+      );
+    }
+  } catch (error) {
+    console.error(`Error notifying priority update: ${poNumber}`, error);
+  }
+}
 
 export async function findByPoNumber(poNumber) {
   return await poRepository.findByPoNumber(poNumber);
@@ -125,6 +157,9 @@ export async function updatePoPriority(id, priority, user) {
       new_value: priority,
     });
   }
+
+  // Notify external portal asynchronously (PO-level priority change)
+  notifyPriorityUpdate(po.po_number, null, priority);
 
   return updatedPo;
 }
@@ -283,12 +318,18 @@ export async function updatePoExpectedDateBatch(
     );
   }
 
-  // If lineItemId is null/absent, update ALL items for this PO
+  // If lineItemId is null/absent, update ALL items for this PO (Order Info section)
   // First, verify access
   const po = await poRepository.findById(poId);
   if (!po) throw new NotFoundError("Purchase order not found");
 
   if (user && user.role === "VENDOR") {
+    if (!user.vendor_id) {
+      throw new ForbiddenError(
+        "Your user account is not associated with a vendor",
+      );
+    }
+
     if (String(po.vendor_id).trim() !== String(user.vendor_id).trim()) {
       throw new ForbiddenError(
         "You do not have permission to update this purchase order",
@@ -299,33 +340,35 @@ export async function updatePoExpectedDateBatch(
   const lineItems = await poRepository.findLineItems(poId);
   const updatePromises = lineItems.map((item) => {
     if (item.status === "DELIVERED") return Promise.resolve();
-    
-    return poRepository.updateLineItem(item.id, {
-      expected_delivery_date: expectedDeliveryDate,
-    }).then(async (updatedItem) => {
-      // Record history for each changed item
-      await poRepository.createLineItemHistory({
-        po_id: poId,
-        line_item_id: item.id,
-        changed_by_user_id: user.id,
-        changed_by_role: user.role,
-        action_type: "DATE_CHANGE",
-        field_name: "expected_delivery_date",
-        old_value: item.expected_delivery_date,
-        new_value: expectedDeliveryDate,
+
+    return poRepository
+      .updateLineItem(item.id, {
+        expected_delivery_date: expectedDeliveryDate,
+      })
+      .then(async (updatedItem) => {
+        // Record history for each changed item
+        await poRepository.createLineItemHistory({
+          po_id: poId,
+          line_item_id: item.id,
+          changed_by_user_id: user.id,
+          changed_by_role: user.role,
+          action_type: "DATE_CHANGE",
+          field_name: "expected_delivery_date",
+          old_value: item.expected_delivery_date,
+          new_value: expectedDeliveryDate,
+        });
+        return updatedItem;
       });
-      return updatedItem;
-    });
   });
 
   await Promise.all(updatePromises);
 
-  // Notify external portal asynchronously
+  // Notify external portal for Order Info delivery date change (ALL line items)
   notifyExternalPortal(
     "/api/v1/purchase-order/purchase-order/expected-delivery-date",
     {
       poNumber: po.po_number,
-      combinationNumber: null,
+      combinationNumber: null, // Order Info change affects all line items
       expectedDeliveryDate: expectedDeliveryDate,
     },
   );
@@ -404,7 +447,13 @@ export async function updateLineItemStatus(poId, lineItemId, status, user) {
   return await poRepository.findLineItemById(lineItemId);
 }
 
-export async function updateLineItemPriority(poId, lineItemId, priority, user) {
+export async function updateLineItemPriority(
+  poId,
+  lineItemId,
+  priority,
+  user,
+  skipNotify = false,
+) {
   const lineItem = await poRepository.findLineItemById(lineItemId);
 
   if (!lineItem) throw new NotFoundError("Line item not found");
@@ -433,6 +482,18 @@ export async function updateLineItemPriority(poId, lineItemId, priority, user) {
       old_value: oldPriority,
       new_value: priority,
     });
+
+    if (!skipNotify) {
+      // Notify external portal asynchronously (line item priority change)
+      const po = await poRepository.findById(poId);
+      if (po) {
+        notifyPriorityUpdate(
+          po.po_number,
+          lineItem.combination_code || null,
+          priority,
+        );
+      }
+    }
   }
 
   return updatedItem;
@@ -1389,10 +1450,14 @@ export async function updatePoPriorityBatch(poId, lineItemId, priority, user) {
   const updatePromises = lineItems.map((item) => {
     // Skip already delivered items to avoid errors
     if (item.status === "DELIVERED") return Promise.resolve();
-    return updateLineItemPriority(poId, item.id, priority, user);
+    // Use skipNotify=true to avoid multiple single notifications during batch
+    return updateLineItemPriority(poId, item.id, priority, user, true);
   });
 
   await Promise.all(updatePromises);
+
+  // Notify external portal for batch update
+  notifyPriorityUpdate(po.po_number, null, priority);
 
   return {
     success: true,

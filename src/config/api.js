@@ -367,6 +367,14 @@ export const api = {
     },
   },
 
+  profile: {
+    changePassword: (currentPassword, newPassword) =>
+      apiRequest("/api/v1/profile/change-password", {
+        method: "PUT",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      }),
+  },
+
   publicVendorSignup: (vendorData) =>
     apiRequest("/api/v1/public/vendor-signup", {
       method: "POST",

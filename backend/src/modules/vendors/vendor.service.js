@@ -13,13 +13,25 @@ export async function getVendorById(id) {
 }
 
 export async function createVendor(vendorData) {
-  const existingVendor = await vendorRepository.findByCode(vendorData.code);
+  const { password, ...vendorInfo } = vendorData;
+  const existingVendor = await vendorRepository.findByCode(vendorInfo.code);
 
   if (existingVendor) {
     throw new ConflictError('Vendor code already exists');
   }
 
-  return await vendorRepository.create(vendorData);
+  const vendor = await vendorRepository.create(vendorInfo);
+
+  // If password is provided, automatically create the vendor user
+  if (password) {
+    await createVendorUser(vendor.id, {
+      name: vendor.contact_person,
+      email: vendor.contact_email,
+      password: password
+    });
+  }
+
+  return vendor;
 }
 
 export async function updateVendor(id, vendorData) {

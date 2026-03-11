@@ -248,19 +248,20 @@ export async function updateLineItemExpectedDate(req, res, next) {
 
 export async function updatePoExpectedDateBatch(req, res, next) {
   try {
-    const { po_id, line_items_id, expected_date } = req.body;
-    
+    const { po_id, expected_date } = req.body;
+
     if (!po_id || !expected_date) {
       throw new BadRequestError("po_id and expected_date are required");
     }
 
+    // For Order Info delivery date changes, pass null as lineItemId to update ALL line items
     const result = await poService.updatePoExpectedDateBatch(
       po_id,
-      line_items_id,
+      null, // Order Info change affects all line items
       expected_date,
-      req.user
+      req.user,
     );
-    
+
     res.json(result);
   } catch (error) {
     next(error);

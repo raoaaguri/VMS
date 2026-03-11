@@ -91,7 +91,8 @@ export function VendorManagement() {
       contact_phone: formData.get('contact_phone'),
       address: formData.get('address'),
       gst_number: formData.get('gst_number'),
-      is_active: formData.get('is_active') === 'true'
+      is_active: formData.get('is_active') === 'true',
+      password: formData.get('password')
     };
 
     try {
@@ -116,12 +117,12 @@ export function VendorManagement() {
     const userData = {
       name: formData.get('name'),
       email: formData.get('email'),
-      password: 'vendor123'
+      password: formData.get('password')
     };
 
     try {
       await api.admin.createVendorUser(showUserForm, userData);
-      setSuccess('Vendor user created successfully. Default password: vendor123');
+      setSuccess('Vendor user created successfully');
       setShowUserForm(null);
     } catch (err) {
       setError(err.message);
@@ -187,7 +188,7 @@ export function VendorManagement() {
 
   return (
     <Layout role="admin">
-      <div className="space-y-6">
+      <div className="">
         {/* Header */}
         <div>
           <button
@@ -393,6 +394,21 @@ export function VendorManagement() {
                     </select>
                   </div>
 
+                  {!editingVendor && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Initial User Password *
+                      </label>
+                      <input
+                        type="password"
+                        name="password"
+                        required={!editingVendor}
+                        placeholder="Enter password for the vendor user account"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  )}
+
                   <div className="flex space-x-3 pt-4">
                     <button
                       type="submit"
@@ -422,7 +438,7 @@ export function VendorManagement() {
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Create Vendor User</h2>
+                  <h2 className="text-xl font-bold text-gray-900">Edit Vendor User</h2>
                   <button
                     onClick={() => setShowUserForm(null)}
                     className="text-gray-400 hover:text-gray-600"
@@ -456,8 +472,16 @@ export function VendorManagement() {
                     />
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-700">
-                    🔑 Default password <strong>vendor123</strong> will be set automatically.
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Password (leave blank to keep current)
+                    </label>
+                    <input
+                      type="password"
+                      name="password"
+                      placeholder="Enter new password"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
 
                   <div className="flex space-x-3 pt-4">
@@ -465,7 +489,7 @@ export function VendorManagement() {
                       type="submit"
                       className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                     >
-                      Create User
+                      Update User
                     </button>
                     <button
                       type="button"
@@ -573,7 +597,7 @@ export function VendorManagement() {
                                 <>
                                   <button
                                     onClick={() => openEditForm(vendor)}
-                                    className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium flex items-center space-x-2 border-b border-gray-100"
+                                    className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium flex items-center space-x-2"
                                   >
                                     <Edit className="w-4 h-4" />
                                     <span>Edit Vendor</span>

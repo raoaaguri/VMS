@@ -50,12 +50,11 @@ export async function updateUser(id, userData) {
     }
   }
 
-  const updateData = {
-    name: userData.name,
-    email: userData.email,
-    role: userData.role,
-    vendor_id: userData.vendor_id
-  };
+  const updateData = {};
+  if (userData.name !== undefined) updateData.name = userData.name;
+  if (userData.email !== undefined) updateData.email = userData.email;
+  if (userData.role !== undefined) updateData.role = userData.role;
+  if (userData.vendor_id !== undefined) updateData.vendor_id = userData.vendor_id;
 
   if (userData.password) {
     updateData.password_hash = await bcrypt.hash(userData.password, 10);
