@@ -119,6 +119,15 @@ export async function createPo(poData, lineItemsData) {
     type: poData.type,
     vendor_id: vendor.id, // Use internal vendor_id
     status: "Pending",
+    expected_delivery_date:
+      poData.expected_delivery_date ||
+      (() => {
+        // Default to po_date + 60 days if expected_delivery_date is not provided
+        const poDate = new Date(poData.po_date);
+        const defaultDate = new Date(poDate);
+        defaultDate.setDate(defaultDate.getDate() + 60);
+        return defaultDate.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+      })(),
   };
 
   const po = await poRepository.create(poCreateData);
