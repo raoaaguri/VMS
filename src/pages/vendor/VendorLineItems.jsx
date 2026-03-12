@@ -20,10 +20,13 @@ export function VendorLineItems() {
     status: ['Pending', 'Partially Delivered'],
     priority: 'ALL',
     itemName: '',
+    category: 'ALL',
+    period: 'ALL',
   });
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const statusDropdownRef = useRef(null);
   const [availableItemNames, setAvailableItemNames] = useState([]);
+  const [availableCategories, setAvailableCategories] = useState([]);
   const { sortedData, requestSort, getSortIcon } = useSortableTable(lineItems);
 
   useEffect(() => {
@@ -34,6 +37,9 @@ export function VendorLineItems() {
     if (lineItems.length > 0) {
       const itemNames = [...new Set(lineItems.map(item => item.product_name).filter(Boolean))].sort();
       setAvailableItemNames(itemNames);
+
+      const categories = [...new Set(lineItems.map(item => item.category).filter(Boolean))].sort();
+      setAvailableCategories(categories);
     }
   }, [lineItems]);
 
@@ -68,6 +74,8 @@ export function VendorLineItems() {
       if (filters.itemName && filters.itemName !== '') {
         params.items_name = filters.itemName;
       }
+      if (filters.category !== 'ALL') params.category = filters.category;
+      if (filters.period !== 'ALL') params.period = filters.period;
 
       params.page = page;
       params.limit = pageSize;
@@ -244,9 +252,46 @@ export function VendorLineItems() {
                   ))}
                 </select>
               </div>
+
+              <div className="">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Master Category
+                </label>
+                <select
+                  value={filters.category}
+                  onChange={(e) => updateFilters({ ...filters, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="ALL">All Categories</option>
+                  {availableCategories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Period
+                </label>
+                <select
+                  value={filters.period}
+                  onChange={(e) => updateFilters({ ...filters, period: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="ALL">All Periods</option>
+                  <option value="TODAY">Today</option>
+                  <option value="THIS_WEEK">This Week</option>
+                  <option value="THIS_MONTH">This Month</option>
+                  <option value="LAST_MONTH">Last Month</option>
+                  <option value="LAST_3_MONTHS">Last 3 Months</option>
+                  <option value="LAST_6_MONTHS">Last 6 Months</option>
+                  <option value="THIS_YEAR">This Year</option>
+                  <option value="LAST_YEAR">Last Year</option>
+                </select>
+              </div>
             </div>
             <button onClick={() => {
-              updateFilters({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', itemName: '' });
+              updateFilters({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', itemName: '', category: 'ALL', period: 'ALL' });
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 

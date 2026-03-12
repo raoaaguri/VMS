@@ -143,7 +143,15 @@ export async function getAdminLineItems(req, res, next) {
 
 export async function getVendorLineItems(req, res, next) {
   try {
-    const { status, priority, items_name, page = 1, limit = 50 } = req.query;
+    const {
+      status,
+      priority,
+      items_name,
+      category,
+      period,
+      page = 1,
+      limit = 50,
+    } = req.query;
     const { vendor_id } = req.user;
     const offset = (page - 1) * limit;
 
@@ -156,6 +164,80 @@ export async function getVendorLineItems(req, res, next) {
     // Always filter by vendor
     conditions.push(`po.vendor_id = $${paramNum++}`);
     params.push(vendor_id);
+
+    // Apply period filter
+    if (period && period !== "ALL") {
+      const now = new Date();
+      let startDate, endDate;
+
+      switch (period) {
+        case "TODAY":
+          startDate = today;
+          endDate = today;
+          break;
+        case "THIS_WEEK":
+          const startOfWeek = new Date(now);
+          startOfWeek.setDate(now.getDate() - now.getDay());
+          startDate = startOfWeek.toISOString().split("T")[0];
+          const endOfWeek = new Date(startOfWeek);
+          endOfWeek.setDate(startOfWeek.getDate() + 6);
+          endDate = endOfWeek.toISOString().split("T")[0];
+          break;
+        case "THIS_MONTH":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+            .toISOString()
+            .split("T")[0];
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+            .toISOString()
+            .split("T")[0];
+          break;
+        case "LAST_MONTH":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+            .toISOString()
+            .split("T")[0];
+          endDate = new Date(now.getFullYear(), now.getMonth(), 0)
+            .toISOString()
+            .split("T")[0];
+          break;
+        case "LAST_3_MONTHS":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1)
+            .toISOString()
+            .split("T")[0];
+          endDate = today;
+          break;
+        case "LAST_6_MONTHS":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1)
+            .toISOString()
+            .split("T")[0];
+          endDate = today;
+          break;
+        case "THIS_YEAR":
+          startDate = new Date(now.getFullYear(), 0, 1)
+            .toISOString()
+            .split("T")[0];
+          endDate = new Date(now.getFullYear(), 11, 31)
+            .toISOString()
+            .split("T")[0];
+          break;
+        case "LAST_YEAR":
+          startDate = new Date(now.getFullYear() - 1, 0, 1)
+            .toISOString()
+            .split("T")[0];
+          endDate = new Date(now.getFullYear() - 1, 11, 31)
+            .toISOString()
+            .split("T")[0];
+          break;
+        default:
+          break;
+      }
+
+      if (startDate && endDate) {
+        conditions.push(`poli.expected_delivery_date >= $${paramNum++}`);
+        params.push(startDate);
+        conditions.push(`poli.expected_delivery_date <= $${paramNum++}`);
+        params.push(endDate);
+      }
+    }
 
     // Apply status filter
     if (status && status !== "ALL") {
@@ -194,6 +276,12 @@ export async function getVendorLineItems(req, res, next) {
     if (items_name && items_name.trim() !== "") {
       conditions.push(`poli.product_name = $${paramNum++}`);
       params.push(items_name.trim());
+    }
+
+    // Apply category filter
+    if (category && category !== "ALL") {
+      conditions.push(`poli.category = $${paramNum++}`);
+      params.push(category);
     }
 
     const whereClause = ` WHERE ${conditions.join(" AND ")}`;

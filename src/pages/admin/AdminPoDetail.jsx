@@ -8,6 +8,7 @@ import { ProductPopup } from '../../components/ProductPopup';
 import { formatDate, formatDateForInput, formatPrice, formatCurrency } from '../../utils/formatters';
 import { api } from '../../config/api';
 import { ArrowLeft, Package, Building, Calendar, AlertCircle, History, X, Filter, Download, ChevronDown, List, LayoutGrid } from 'lucide-react';
+import { useSortableTable } from '../../hooks/useSortableTable';
 import * as XLSX from 'xlsx';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
@@ -394,11 +395,13 @@ export function AdminPoDetail() {
     return statusMatch && priorityMatch && categoryMatch && itemNameMatch && styleMatch;
   }) || [];
 
-  const totalLineItems = filteredLineItems.length;
+  const { sortedData, requestSort, getSortIcon } = useSortableTable(filteredLineItems);
+
+  const totalLineItems = sortedData.length;
   const totalPagesLineItems = Math.max(1, Math.ceil(totalLineItems / lineItemPageSize));
   const startIndex = (lineItemPage - 1) * lineItemPageSize;
   const endIndex = startIndex + lineItemPageSize;
-  const paginatedLineItems = filteredLineItems.slice(startIndex, endIndex);
+  const paginatedLineItems = sortedData.slice(startIndex, endIndex);
 
   const getVisiblePageNumbersLineItems = () => {
     if (totalPagesLineItems <= 5) return Array.from({ length: totalPagesLineItems }, (_, i) => i + 1);
@@ -960,24 +963,150 @@ export function AdminPoDetail() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <TableHeader columnName="design_code">Design Code</TableHeader>
-                    <TableHeader columnName="combination_code">Combination Code</TableHeader>
-                    <TableHeader columnName="product_name">Product Name</TableHeader>
-                    <TableHeader columnName="style">Style</TableHeader>
-                    <TableHeader columnName="sub_style">Sub-Style</TableHeader>
-                    <TableHeader columnName="color">Color</TableHeader>
-                    <TableHeader columnName="sub_color">Sub-Color</TableHeader>
-                    <TableHeader columnName="polish">Polish</TableHeader>
-                    <TableHeader columnName="size">Size</TableHeader>
-                    <TableHeader columnName="weight">Weight</TableHeader>
-                    <TableHeader columnName="quantity">Order Qty</TableHeader>
-                    <TableHeader columnName="received_qty">Delivered Qty</TableHeader>
-                    <TableHeader columnName="pending_qty">Pending Qty</TableHeader>
-                    <TableHeader columnName="price">Price</TableHeader>
-                    <TableHeader columnName="mrp">MRP</TableHeader>
-                    <TableHeader columnName="expected_delivery_date">Expected Date</TableHeader>
-                    <TableHeader columnName="status">Status</TableHeader>
-                    <TableHeader columnName="priority">Priority</TableHeader>
+                    <TableHeader
+                      columnName="design_code"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('design_code')}
+                    >
+                      Design No
+                    </TableHeader>
+                    <TableHeader
+                      columnName="combination_code"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('combination_code')}
+                    >
+                      Combination Code
+                    </TableHeader>
+                    <TableHeader
+                      columnName="product_name"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('product_name')}
+                    >
+                      Product Name
+                    </TableHeader>
+                    <TableHeader
+                      columnName="style"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('style')}
+                    >
+                      Style
+                    </TableHeader>
+                    <TableHeader
+                      columnName="sub_style"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('sub_style')}
+                    >
+                      Sub-Style
+                    </TableHeader>
+                    <TableHeader
+                      columnName="color"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('color')}
+                    >
+                      Color
+                    </TableHeader>
+                    <TableHeader
+                      columnName="sub_color"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('sub_color')}
+                    >
+                      Sub-Color
+                    </TableHeader>
+                    <TableHeader
+                      columnName="polish"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('polish')}
+                    >
+                      Polish
+                    </TableHeader>
+                    <TableHeader
+                      columnName="size"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('size')}
+                    >
+                      Size
+                    </TableHeader>
+                    <TableHeader
+                      columnName="weight"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('weight')}
+                    >
+                      Weight
+                    </TableHeader>
+                    <TableHeader
+                      columnName="quantity"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('quantity')}
+                    >
+                      Order Qty
+                    </TableHeader>
+                    <TableHeader
+                      columnName="received_qty"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('received_qty')}
+                    >
+                      Delivered Qty
+                    </TableHeader>
+                    <TableHeader
+                      columnName="pending_qty"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('pending_qty')}
+                    >
+                      Pending Qty
+                    </TableHeader>
+                    <TableHeader
+                      columnName="price"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('price')}
+                    >
+                      Price
+                    </TableHeader>
+                    <TableHeader
+                      columnName="mrp"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('mrp')}
+                    >
+                      MRP
+                    </TableHeader>
+                    <TableHeader
+                      columnName="expected_delivery_date"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('expected_delivery_date')}
+                    >
+                      Expected Delivery Date
+                    </TableHeader>
+                    <TableHeader
+                      columnName="status"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('status')}
+                    >
+                      Status
+                    </TableHeader>
+                    <TableHeader
+                      columnName="priority"
+                      sortable={true}
+                      onSort={requestSort}
+                      sortDirection={getSortIcon('priority')}
+                    >
+                      Priority
+                    </TableHeader>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">

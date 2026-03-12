@@ -337,6 +337,12 @@ export async function updatePoExpectedDateBatch(
     }
   }
 
+  // Update PO level expected_delivery_date
+  await poRepository.update(poId, {
+    expected_delivery_date: expectedDeliveryDate,
+  });
+
+  // Update all line items expected_delivery_date
   const lineItems = await poRepository.findLineItems(poId);
   const updatePromises = lineItems.map((item) => {
     if (item.status === "DELIVERED") return Promise.resolve();
