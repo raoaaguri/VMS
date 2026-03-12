@@ -736,12 +736,13 @@ export function VendorPoDetail() {
                   ) : (
                     <div className="flex items-center space-x-2">
                       <p className="text-gray-900 font-medium text-sm">
-                        {po.expected_delivery_date ? formatDate(po.expected_delivery_date) : 'Not set'}
+                        {po.expected_delivery_date ? formatDate(po.expected_delivery_date) :
+                          po.po_date ? formatDate(po.po_date) : 'Not set'}
                       </p>
                       <button
                         onClick={() => {
                           setEditingPoExpectedDate(true);
-                          setTempPoExpectedDate(po.expected_delivery_date || '');
+                          setTempPoExpectedDate(po.expected_delivery_date || po.po_date || '');
                         }}
                         className="text-sm text-blue-600 hover:text-blue-800"
                       >
