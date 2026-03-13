@@ -1476,6 +1476,62 @@ export async function updatePoPriorityBatch(poId, lineItemId, priority, user) {
 
   return {
     success: true,
-    message: "Priority updated for PO and all line items",
+    message: "Priority updated for all line items",
+  };
+}
+
+export async function updatePoQuantity(quantityUpdates) {
+  const results = [];
+  const errors = [];
+
+  for (const update of quantityUpdates) {
+    try {
+      // Find PO by po_number
+      const po = await poRepository.findByPoNumber(update.poNumber);
+      if (!po) {
+        errors.push({
+          poNumber: update.poNumber,
+          combinationCode: update.combinationCode,
+          error: "PO not found",
+        });
+        continue;
+      }
+
+      // Update line item quantity
+      const updatedLineItem = await poRepository.updateLineItemQuantity(
+        po.id,
+        update.combinationCode,
+        {
+          totalQty: update.totalQty,
+          receivedQty: update.receivedQty,
+        },
+      );
+
+      results.push({
+        poNumber: update.poNumber,
+        combinationCode: update.combinationCode,
+        success: true,
+        lineItemId: updatedLineItem.id,
+        updatedData: {
+          totalQty: updatedLineItem.quantity,
+          receivedQty: updatedLineItem.received_qty,
+        },
+      });
+    } catch (error) {
+      errors.push({
+        poNumber: update.poNumber,
+        combinationCode: update.combinationCode,
+        error: error.message,
+      });
+    }
+  }
+
+  return {
+    success: errors.length === 0,
+    totalProcessed: quantityUpdates.length,
+    successCount: results.length,
+    errorCount: errors.length,
+    results,
+    errors,
   };
 }

@@ -5,6 +5,7 @@ import {
   requireAdmin,
   requireVendor,
 } from "../../middlewares/auth.middleware.js";
+import { checkDitosGrnToken } from "../../middlewares/ditosGrn.middleware.js";
 
 const adminRouter = express.Router();
 const vendorRouter = express.Router();
@@ -32,6 +33,9 @@ adminRouter.post(
 
 // Public route for creating POs (no auth required)
 publicRouter.post("/", poController.createPo);
+
+// Public GRN API - No authentication required
+publicRouter.post("/pos/update-quantity", poController.updatePoQuantity);
 
 vendorRouter.use(authMiddleware);
 vendorRouter.use(requireVendor);

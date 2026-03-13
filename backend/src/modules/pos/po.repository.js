@@ -489,3 +489,26 @@ export async function getAllHistory(filters = {}, limit = null, offset = null) {
     totalPages: limit !== null ? Math.ceil(total / limit) : 1,
   };
 }
+
+export async function updateLineItemQuantity(
+  poId,
+  combinationCode,
+  quantityData,
+) {
+  const db = getDbClient();
+
+  const { data, error } = await db
+    .from("purchase_order_line_items")
+    .update({
+      quantity: quantityData.totalQty,
+      received_qty: quantityData.receivedQty,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("po_id", poId)
+    .eq("combination_code", combinationCode)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}

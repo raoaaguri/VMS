@@ -363,3 +363,45 @@ export async function updatePoPriorityBatch(req, res, next) {
     next(error);
   }
 }
+
+export async function updatePoQuantity(req, res, next) {
+  try {
+    const quantityUpdates = req.body;
+
+    if (!Array.isArray(quantityUpdates)) {
+      throw new BadRequestError("Request body must be an array");
+    }
+
+    // Validate each update item
+    for (const update of quantityUpdates) {
+      if (!update.poNumber || !update.combinationCode) {
+        throw new BadRequestError(
+          "Each item must have poNumber and combinationCode",
+        );
+      }
+
+      if (
+        typeof update.totalQty !== "number" ||
+        typeof update.receivedQty !== "number"
+      ) {
+        throw new BadRequestError("totalQty and receivedQty must be numbers");
+      }
+    }
+
+    const result = await poService.updatePoQuantity(quantityUpdates);
+
+    // Log public API access
+    console.log(
+      `📦 Public GRN API called: ${quantityUpdates.length} quantity updates processed`,
+      {
+        successCount: result.successCount,
+        errorCount: result.errorCount,
+        timestamp: new Date().toISOString(),
+      },
+    );
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}

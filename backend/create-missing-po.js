@@ -1,5 +1,5 @@
-import dotenv from 'dotenv';
-import pkg from 'pg';
+import dotenv from "dotenv";
+import pkg from "pg";
 const { Pool } = pkg;
 
 dotenv.config();
@@ -10,29 +10,120 @@ const pool = new Pool({
   database: process.env.PGDATABASE,
   user: process.env.PGUSER,
   password: process.env.PGPASSWORD,
-  ssl: process.env.PGSSLMODE === 'require'
+  ssl: process.env.PGSSLMODE === "require",
 });
 
-async function createMissingPo() {
+async function updateQuantities(quantityUpdates) {
+  const client = await pool.connect();
+  const results = [];
+  const errors = [];
+
   try {
-    // Get david's vendor_id
-    const user = await pool.query(
-      'SELECT vendor_id FROM users WHERE email = $1',
-      ['david@primematerials.com']
-    );
-    const vendorId = user.rows[0].vendor_id;
+    await client.query("BEGIN");
 
-    // Create a new PO for david's vendor
-    const result = await pool.query(
-      'INSERT INTO purchase_orders (po_number, vendor_id, status, po_date, priority, type, created_at) VALUES ($1, $2, $3, NOW(), $4, $5, NOW()) RETURNING id, po_number',
-      ['PO-2026-999', vendorId, 'CREATED', 'MEDIUM', 'NEW_ITEMS']
-    );
+    for (const update of quantityUpdates) {
+      try {
+        // Step 1: Find PO by po_number
+        const poResult = await client.query(
+          "SELECT id FROM purchase_orders WHERE po_number = $1",
+          [update.poNumber],
+        );
 
-    console.log('✅ Created PO:', result.rows[0].po_number, 'for vendor_id:', vendorId);
+        if (poResult.rows.length === 0) {
+          errors.push({
+            poNumber: update.poNumber,
+            combinationCode: update.combinationCode,
+            error: "PO not found",
+          });
+          continue;
+        }
+
+        const poId = poResult.rows[0].id;
+
+        // Step 2: Find line item by PO ID + combination_code
+        const lineItemResult = await client.query(
+          "SELECT id FROM purchase_order_line_items WHERE po_id = $1 AND combination_code = $2",
+          [poId, update.combinationCode],
+        );
+
+        if (lineItemResult.rows.length === 0) {
+          errors.push({
+            poNumber: update.poNumber,
+            combinationCode: update.combinationCode,
+            error: "Line item not found",
+          });
+          continue;
+        }
+
+        const lineItemId = lineItemResult.rows[0].id;
+
+        // Step 3: Update quantity and received_qty
+        await client.query(
+          "UPDATE purchase_order_line_items SET quantity = $1, received_qty = $2, updated_at = NOW() WHERE id = $3",
+          [update.totalQty, update.receivedQty, lineItemId],
+        );
+
+        results.push({
+          poNumber: update.poNumber,
+          combinationCode: update.combinationCode,
+          success: true,
+          lineItemId: lineItemId,
+          updatedData: {
+            totalQty: update.totalQty,
+            receivedQty: update.receivedQty,
+          },
+        });
+      } catch (error) {
+        errors.push({
+          poNumber: update.poNumber,
+          combinationCode: update.combinationCode,
+          error: error.message,
+        });
+      }
+    }
+
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  return {
+    success: errors.length === 0,
+    totalProcessed: quantityUpdates.length,
+    successCount: results.length,
+    errorCount: errors.length,
+    results,
+    errors,
+  };
+}
+
+// Example usage
+async function testUpdate() {
+  const testData = [
+    {
+      poNumber: "WHBLR-PO-46",
+      combinationCode: "600138",
+      totalQty: 5,
+      receivedQty: 3,
+    },
+  ];
+
+  try {
+    const result = await updateQuantities(testData);
+    console.log("✅ Update Result:", result);
+  } catch (error) {
+    console.error("❌ Error:", error.message);
+  } finally {
     await pool.end();
-  } catch (err) {
-    console.error('Error:', err.message);
   }
 }
 
-createMissingPo();
+// Run test if called directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  testUpdate();
+}
+
+export { updateQuantities };
