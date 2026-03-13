@@ -35,7 +35,7 @@ adminRouter.post(
 publicRouter.post("/", poController.createPo);
 
 // Public GRN API - No authentication required
-publicRouter.post("/pos/update-quantity", poController.updatePoQuantity);
+publicRouter.post("/update-quantity", poController.updatePoQuantity);
 
 vendorRouter.use(authMiddleware);
 vendorRouter.use(requireVendor);
