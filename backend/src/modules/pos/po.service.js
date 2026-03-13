@@ -1497,7 +1497,7 @@ export async function updatePoQuantity(quantityUpdates) {
         continue;
       }
 
-      // Update line item quantity
+      // Update line item quantity and status
       const updatedLineItem = await poRepository.updateLineItemQuantity(
         po.id,
         update.combinationCode,
@@ -1505,6 +1505,11 @@ export async function updatePoQuantity(quantityUpdates) {
           totalQty: update.totalQty,
           receivedQty: update.receivedQty,
         },
+      );
+
+      // Update PO status based on all line items
+      const updatedPo = await poRepository.updatePoStatusBasedOnLineItems(
+        po.id,
       );
 
       results.push({
@@ -1515,6 +1520,8 @@ export async function updatePoQuantity(quantityUpdates) {
         updatedData: {
           totalQty: updatedLineItem.quantity,
           receivedQty: updatedLineItem.received_qty,
+          lineItemStatus: updatedLineItem.status,
+          poStatus: updatedPo.status,
         },
       });
     } catch (error) {

@@ -497,15 +497,63 @@ export async function updateLineItemQuantity(
 ) {
   const db = getDbClient();
 
+  // Update line item quantity and determine new status
   const { data, error } = await db
     .from("purchase_order_line_items")
     .update({
       quantity: quantityData.totalQty,
       received_qty: quantityData.receivedQty,
+      status:
+        quantityData.receivedQty === 0
+          ? "Pending"
+          : quantityData.receivedQty < quantityData.totalQty
+            ? "Partially Delivered"
+            : "Fully Delivered",
       updated_at: new Date().toISOString(),
     })
     .eq("po_id", poId)
     .eq("combination_code", combinationCode)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updatePoStatusBasedOnLineItems(poId) {
+  const db = getDbClient();
+
+  // Get all line items for this PO
+  const { data: lineItems, error: fetchError } = await db
+    .from("purchase_order_line_items")
+    .select("status")
+    .eq("po_id", poId);
+
+  if (fetchError) throw fetchError;
+
+  // Determine PO status based on line items
+  let poStatus;
+  const allPending = lineItems.every((item) => item.status === "Pending");
+  const allFullyDelivered = lineItems.every(
+    (item) => item.status === "Fully Delivered",
+  );
+
+  if (allPending) {
+    poStatus = "Pending";
+  } else if (allFullyDelivered) {
+    poStatus = "Fully Delivered";
+  } else {
+    poStatus = "Partially Delivered";
+  }
+
+  // Update PO status
+  const { data, error } = await db
+    .from("purchase_orders")
+    .update({
+      status: poStatus,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", poId)
     .select()
     .single();
 

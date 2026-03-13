@@ -32,6 +32,9 @@ export const API_BASE_URL = getApiBaseUrl();
 logger.info("API Configuration Loaded", {
   API_BASE_URL,
   isDev: import.meta.env.DEV,
+  windowOrigin: window.location.origin,
+  viteApiUrl: import.meta.env.VITE_API_URL,
+  viteBaseUrl: import.meta.env.VITE_API_BASE_URL,
 });
 
 export async function apiRequest(endpoint, options = {}) {
@@ -386,6 +389,14 @@ export const api = {
     apiRequest("/api/v1/public/pos", {
       method: "POST",
       body: JSON.stringify(poData),
+      // No auth token needed for public endpoint
+    }),
+
+  // Public GRN API (no auth required)
+  publicUpdateQuantity: (quantityData) =>
+    apiRequest("/api/v1/public/pos/update-quantity", {
+      method: "POST",
+      body: JSON.stringify(quantityData),
       // No auth token needed for public endpoint
     }),
 };
