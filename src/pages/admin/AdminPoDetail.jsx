@@ -74,7 +74,7 @@ export function AdminPoDetail() {
     if (po?.line_items) {
       extractAvailableFilters();
     }
-  }, [po]);
+  }, [id]); // Only re-extract when PO ID changes (new PO is loaded)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -110,8 +110,6 @@ export function AdminPoDetail() {
     const styles = new Set();
 
     po.line_items.forEach(item => {
-
-
       // Extract categories
       if (item.category) categories.add(item.category);
       else if (item.region) categories.add(item.region); // Fallback to region if category is not set
@@ -121,7 +119,12 @@ export function AdminPoDetail() {
 
       // Extract styles
       if (item.style) styles.add(item.style);
+    });
 
+    console.log('🔍 Extracted Filters:', {
+      categories: Array.from(categories),
+      itemNames: Array.from(itemNames),
+      styles: Array.from(styles)
     });
 
     setAvailableFilters({
@@ -395,7 +398,10 @@ export function AdminPoDetail() {
     return statusMatch && priorityMatch && categoryMatch && itemNameMatch && styleMatch;
   }) || [];
 
-  const { sortedData, requestSort, getSortIcon } = useSortableTable(filteredLineItems);
+  const { sortedData, requestSort, getSortIcon } = useSortableTable(filteredLineItems, {
+    defaultSortKey: 'product_name',
+    defaultDirection: 'asc'
+  });
 
   const totalLineItems = sortedData.length;
   const totalPagesLineItems = Math.max(1, Math.ceil(totalLineItems / lineItemPageSize));
@@ -447,15 +453,15 @@ export function AdminPoDetail() {
           {/* Top overlay */}
           <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 to-transparent p-3">
             <div className="flex justify-between items-start text-white">
-              <div className="text-sm font-medium">
-                {item.design_code || '-'}
+              <div className="text-xs font-medium">
+                D.No: {item.design_code || '-'}
               </div>
-              <div className="text-xs">
-                {po?.created_at ? new Date(po.created_at).toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                }) : '-'}
+              <div className="text-sm font-medium">
+                C.No: {item.combination_code || '-'}
+              </div>
+
+              <div className="text-sm font-medium">
+                PO: {po?.po_number || '-'}
               </div>
             </div>
           </div>
@@ -463,8 +469,18 @@ export function AdminPoDetail() {
           {/* Bottom overlay */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-3">
             <div className="flex justify-between items-end text-white">
-              <div className="text-sm font-medium">
-                {po?.po_number || '-'}
+              {/* <div className="text-xs">
+                {po?.created_at ? new Date(po.created_at).toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                }) : '-'}
+              </div> */}
+              <div className="text-xs">
+                PLS: {item.polish || ''}
+              </div>
+              <div className="text-xs">
+                CLR: {item.color || ''}
               </div>
               <div className="text-xs">
                 Qty: {item.quantity || 0}
@@ -910,6 +926,13 @@ export function AdminPoDetail() {
                 ))}
               </select>
 
+              {/* Debug Info */}
+              <div className="text-xs text-gray-500">
+                Categories: {availableFilters.categories.length} |
+                Items: {availableFilters.itemNames.length} |
+                Styles: {availableFilters.styles.length}
+              </div>
+
               {/* Item Name Filter */}
               <select
                 value={lineItemFilters.itemName}
@@ -985,7 +1008,7 @@ export function AdminPoDetail() {
                       onSort={requestSort}
                       sortDirection={getSortIcon('product_name')}
                     >
-                      Product Name
+                      Item Name
                     </TableHeader>
                     <TableHeader
                       columnName="style"

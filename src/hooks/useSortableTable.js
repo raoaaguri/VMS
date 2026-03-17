@@ -2,8 +2,8 @@ import { useState, useMemo } from "react";
 
 export function useSortableTable(data, config = {}) {
   const [sortConfig, setSortConfig] = useState({
-    key: null,
-    direction: "asc",
+    key: config.defaultSortKey || null,
+    direction: config.defaultDirection || "asc",
   });
 
   const toComparable = (value) => {

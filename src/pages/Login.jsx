@@ -2,9 +2,18 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { AlertCircle } from 'lucide-react';
+import kushalsLogo from '../kushals.png';
 import { logger } from '../utils/logger';
+import { API_BASE_URL } from '../config/api';
 
 export function Login() {
+  // 🔍 DEBUG: Log API Base URL on Login page load
+  console.log('🔑 Login Page - API Base URL Debug:', {
+    API_BASE_URL,
+    currentDomain: window.location.hostname,
+    windowOrigin: window.location.origin,
+    timestamp: new Date().toISOString()
+  });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -81,7 +90,7 @@ export function Login() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="flex flex-col items-center mb-8">
             <div className=" p-3 rounded-xl mb-4">
-              <img src="https://ditos.technoboost.in/images/loginLogo.svg" alt="Logo" />
+              <img src={kushalsLogo} alt="Logo" />
             </div>
             <h2 className="text-3xl font-bold text-gray-900 text-center">
               Welcome Back

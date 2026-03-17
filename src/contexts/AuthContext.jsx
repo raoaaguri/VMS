@@ -1,9 +1,18 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../config/api';
 import { logger as baseLogger } from '../utils/logger';
+import { API_BASE_URL } from '../config/api';
 
 const AuthContext = createContext(null);
 const logger = baseLogger.child('AuthContext');
+
+// 🔍 DEBUG: Log API Base URL in Auth Context
+console.log('🔐 Auth Context - API Base URL Debug:', {
+  API_BASE_URL,
+  currentDomain: window.location.hostname,
+  windowOrigin: window.location.origin,
+  timestamp: new Date().toISOString()
+});
 
 // Function to check if JWT token is expired
 const isTokenExpired = (token) => {

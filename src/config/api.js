@@ -29,6 +29,18 @@ const getApiBaseUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
+// 🔍 DEBUG: Log API Base URL resolution
+console.log("🌐 API Base URL Resolution Debug:", {
+  API_BASE_URL,
+  isDev: import.meta.env.DEV,
+  windowOrigin: window.location.origin,
+  viteApiUrl: import.meta.env.VITE_API_URL,
+  viteBaseUrl: import.meta.env.VITE_API_BASE_URL,
+  currentDomain: window.location.hostname,
+  protocol: window.location.protocol,
+  port: window.location.port,
+});
+
 logger.info("API Configuration Loaded", {
   API_BASE_URL,
   isDev: import.meta.env.DEV,
@@ -39,6 +51,24 @@ logger.info("API Configuration Loaded", {
 
 export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem("token");
+
+  // 🔍 DEBUG: Log each API call
+  const fullUrl = `${API_BASE_URL}${endpoint}`;
+  console.log("🚀 API Request Debug:", {
+    endpoint,
+    fullUrl,
+    method: options.method || "GET",
+    API_BASE_URL,
+    currentDomain: window.location.hostname,
+    timestamp: new Date().toISOString(),
+  });
+
+  logger.info("API Request", {
+    endpoint,
+    fullUrl,
+    method: options.method || "GET",
+    API_BASE_URL,
+  });
   const startTime = performance.now();
   const requestId = Math.random().toString(36).substring(7);
 
@@ -56,8 +86,6 @@ export async function apiRequest(endpoint, options = {}) {
     ...options,
     headers,
   };
-
-  const fullUrl = `${API_BASE_URL}${endpoint}`;
 
   try {
     logger.debug(`[${requestId}] API Request Started`, {

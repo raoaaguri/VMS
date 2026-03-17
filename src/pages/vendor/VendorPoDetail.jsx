@@ -90,7 +90,7 @@ export function VendorPoDetail() {
     if (po?.line_items) {
       extractAvailableFilters();
     }
-  }, [po]);
+  }, [id]); // Only re-extract when PO ID changes (new PO is loaded)
 
   // Add handler for product popup
   const handleProductClick = (item) => {
@@ -116,6 +116,11 @@ export function VendorPoDetail() {
       // Extract categories
       if (item.category) categories.add(item.category);
       else if (item.region) categories.add(item.region); // Fallback to region if category is not set
+    });
+
+    console.log('🔍 Vendor Extracted Filters:', {
+      itemNames: Array.from(itemNames),
+      categories: Array.from(categories)
     });
 
     setAvailableFilters({
@@ -497,7 +502,10 @@ export function VendorPoDetail() {
     return monthMatch;
   });
 
-  const { sortedData, requestSort, getSortIcon } = useSortableTable(filteredLineItems);
+  const { sortedData, requestSort, getSortIcon } = useSortableTable(filteredLineItems, {
+    defaultSortKey: 'product_name',
+    defaultDirection: 'asc'
+  });
 
   const totalLineItems = sortedData.length;
   const totalPagesLineItems = Math.max(1, Math.ceil(totalLineItems / lineItemPageSize));
@@ -549,15 +557,15 @@ export function VendorPoDetail() {
           {/* Top overlay */}
           <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 to-transparent p-3">
             <div className="flex justify-between items-start text-white">
-              <div className="text-sm font-medium">
-                {item.design_code || '-'}
+              <div className="text-sm font-medium text-red-900">
+                D.No: {item.design_code || '-'}
               </div>
-              <div className="text-xs">
-                {po?.created_at ? new Date(po.created_at).toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                }) : '-'}
+              <div className="text-sm font-medium text-red-900">
+                C.No: {item.combination_code || '-'}
+              </div>
+
+              <div className="text-sm font-medium text-red-900">
+                PO: {po?.po_number || '-'}
               </div>
             </div>
           </div>
@@ -565,10 +573,13 @@ export function VendorPoDetail() {
           {/* Bottom overlay */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-3">
             <div className="flex justify-between items-end text-white">
-              <div className="text-sm font-medium">
-                {po?.po_number || '-'}
+              <div className="text-xs text-red-900">
+                PLS: {item.polish || ''}
               </div>
-              <div className="text-xs">
+              <div className="text-xs text-red-900">
+                CLR: {item.color || ''}
+              </div>
+              <div className="text-xs text-red-900">
                 Qty: {item.quantity || 0}
               </div>
             </div>
@@ -972,6 +983,12 @@ export function VendorPoDetail() {
                   <option key={category} value={category}>{category}</option>
                 ))}
               </select>
+
+              {/* Debug Info */}
+              <div className="text-xs text-gray-500">
+                Categories: {availableFilters.categories.length} |
+                Items: {availableFilters.itemNames.length}
+              </div>
             </div>
             <button onClick={() => {
               setLineItemFilters({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', month: 'ALL', itemName: '', category: 'ALL' });
@@ -1005,7 +1022,7 @@ export function VendorPoDetail() {
                       onSort={requestSort}
                       sortDirection={getSortIcon('product_name')}
                     >
-                      Product Name
+                      Item Name
                     </TableHeader>
                     <TableHeader
                       columnName="style"
