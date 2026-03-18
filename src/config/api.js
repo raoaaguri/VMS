@@ -7,14 +7,13 @@ import { logger } from "../utils/logger";
 
 // Get the API base URL dynamically from the current browser domain
 const getApiBaseUrl = () => {
-  // If we are NOT on localhost, always use the current browser's origin (domain)
-  // This ensures the app works on vms.technoboost.in, vms2.technoboost.in, etc.
-  if (window.location.hostname !== "localhost") {
-    return window.location.origin;
+  // Development environment
+  if (import.meta.env.DEV) {
+    return import.meta.env.VITE_API_URL || "http://localhost:3001";
   }
 
-  // Local development fallback
-  return import.meta.env.VITE_API_URL || "http://localhost:3001";
+  // Production: always use the current browser domain so it works on any domain
+  return window.location.origin;
 };
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -365,7 +364,7 @@ export const api = {
       }),
     getLineItemsByPriority: (params) => {
       const query = new URLSearchParams(params).toString();
-      return apiRequest(`/api/v1/vendor/line-items-by-priority?${query}`);
+      return apiRequest(`/api/v1/vendor/line-items/priority?${query}`);
     },
     acceptPo: (id) =>
       apiRequest(`/api/v1/vendor/pos/${id}/accept`, {

@@ -91,8 +91,8 @@ export function VendorPriorityLineItems() {
       if (styleFilter !== 'ALL') params.style = styleFilter;
 
       const response = await api.vendor.getLineItemsByPriority(params);
-      setLineItems(response.data || []);  // NEW API returns "data" property
-      setTotal(response.total || 0);     // NEW API returns "total" property
+      setLineItems(response.items || []);  // Use "items" instead of "data"
+      setTotal(response.total || response.items?.length || 0);  // Handle missing total
     } catch (err) {
       console.error('Failed to load priority line items:', err);
       setError('Failed to load line items');

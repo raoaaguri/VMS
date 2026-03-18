@@ -2,7 +2,6 @@ import express from "express";
 import {
   getAdminLineItems,
   getVendorLineItems,
-  getLineItemsByPriority,
 } from "./line-items.controller.js";
 import {
   authMiddleware,
@@ -21,4 +20,3 @@ vendorRouter.use(authMiddleware);
 vendorRouter.use(requireVendor);
 vendorRouter.get("/", getVendorLineItems);
 vendorRouter.get("/priority", getVendorLineItems); // Same endpoint, supports priority parameter
-vendorRouter.get("/line-items-by-priority", getLineItemsByPriority); // NEW: Custom endpoint

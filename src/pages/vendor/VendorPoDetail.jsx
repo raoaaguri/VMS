@@ -90,7 +90,7 @@ export function VendorPoDetail() {
     if (po?.line_items) {
       extractAvailableFilters();
     }
-  }, [id]); // Only re-extract when PO ID changes (new PO is loaded)
+  }, [po?.line_items]); // Re-extract filters whenever items are loaded or change
 
   // Add handler for product popup
   const handleProductClick = (item) => {
@@ -983,12 +983,6 @@ export function VendorPoDetail() {
                   <option key={category} value={category}>{category}</option>
                 ))}
               </select>
-
-              {/* Debug Info */}
-              <div className="text-xs text-gray-500">
-                Categories: {availableFilters.categories.length} |
-                Items: {availableFilters.itemNames.length}
-              </div>
             </div>
             <button onClick={() => {
               setLineItemFilters({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', month: 'ALL', itemName: '', category: 'ALL' });

@@ -74,7 +74,7 @@ export function AdminPoDetail() {
     if (po?.line_items) {
       extractAvailableFilters();
     }
-  }, [id]); // Only re-extract when PO ID changes (new PO is loaded)
+  }, [po?.line_items]); // Re-extract filters whenever items are loaded or change
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -453,14 +453,14 @@ export function AdminPoDetail() {
           {/* Top overlay */}
           <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 to-transparent p-3">
             <div className="flex justify-between items-start text-white">
-              <div className="text-xs font-medium">
+              <div className="text-xs font-medium text-red-900">
                 D.No: {item.design_code || '-'}
               </div>
-              <div className="text-sm font-medium">
+              <div className="text-sm font-medium text-red-900">
                 C.No: {item.combination_code || '-'}
               </div>
 
-              <div className="text-sm font-medium">
+              <div className="text-sm font-medium text-red-900">
                 PO: {po?.po_number || '-'}
               </div>
             </div>
@@ -476,13 +476,13 @@ export function AdminPoDetail() {
                   year: 'numeric'
                 }) : '-'}
               </div> */}
-              <div className="text-xs">
+              <div className="text-xs text-red-900">
                 PLS: {item.polish || ''}
               </div>
-              <div className="text-xs">
+              <div className="text-xs text-red-900">
                 CLR: {item.color || ''}
               </div>
-              <div className="text-xs">
+              <div className="text-xs text-red-900">
                 Qty: {item.quantity || 0}
               </div>
             </div>
@@ -925,13 +925,6 @@ export function AdminPoDetail() {
                   <option key={category} value={category}>{category}</option>
                 ))}
               </select>
-
-              {/* Debug Info */}
-              <div className="text-xs text-gray-500">
-                Categories: {availableFilters.categories.length} |
-                Items: {availableFilters.itemNames.length} |
-                Styles: {availableFilters.styles.length}
-              </div>
 
               {/* Item Name Filter */}
               <select
