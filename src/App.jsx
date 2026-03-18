@@ -11,6 +11,7 @@ import { AdminHistory } from './pages/admin/AdminHistory';
 import { VendorDashboard } from './pages/vendor/VendorDashboard';
 import { VendorPoDetail } from './pages/vendor/VendorPoDetail';
 import { VendorLineItems } from './pages/vendor/VendorLineItems';
+import { VendorPriorityLineItems } from './pages/vendor/VendorPriorityLineItems';
 import { VendorHistory } from './pages/vendor/VendorHistory';
 
 function App() {
@@ -98,6 +99,15 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['VENDOR']}>
                 <VendorPoDetail />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/vendor/priority/:priority"
+            element={
+              <ProtectedRoute allowedRoles={['VENDOR']}>
+                <VendorPriorityLineItems />
               </ProtectedRoute>
             }
           />

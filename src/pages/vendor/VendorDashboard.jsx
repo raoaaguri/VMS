@@ -192,23 +192,43 @@ export function VendorDashboard() {
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
-              <h4 className="text-sm font-medium text-gray-600 mb-3">Open POs by Priority</h4>
+              <h4 className="text-sm font-medium text-gray-600 mb-3">Open PO Line Items by Priority</h4>
               <div className="grid grid-cols-2 gap-x-10">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Low:</span>
-                  <span className="font-semibold text-gray-900">{stats.open_pos_by_priority.LOW}</span>
+                  <button
+                    onClick={() => navigate(`/vendor/priority/LOW`)}
+                    className="font-semibold text-gray-900 hover:text-blue-600 hover:underline transition-colors"
+                  >
+                    {stats.open_pos_by_priority.LOW}
+                  </button>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-blue-600">Medium:</span>
-                  <span className="font-semibold text-blue-900">{stats.open_pos_by_priority.MEDIUM}</span>
+                  <button
+                    onClick={() => navigate(`/vendor/priority/MEDIUM`)}
+                    className="font-semibold text-blue-900 hover:text-blue-600 hover:underline transition-colors"
+                  >
+                    {stats.open_pos_by_priority.MEDIUM}
+                  </button>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-orange-600">High:</span>
-                  <span className="font-semibold text-orange-900">{stats.open_pos_by_priority.HIGH}</span>
+                  <button
+                    onClick={() => navigate(`/vendor/priority/HIGH`)}
+                    className="font-semibold text-orange-900 hover:text-orange-600 hover:underline transition-colors"
+                  >
+                    {stats.open_pos_by_priority.HIGH}
+                  </button>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-red-600">Urgent:</span>
-                  <span className="font-semibold text-red-900">{stats.open_pos_by_priority.URGENT}</span>
+                  <button
+                    onClick={() => navigate(`/vendor/priority/URGENT`)}
+                    className="font-semibold text-red-900 hover:text-red-600 hover:underline transition-colors"
+                  >
+                    {stats.open_pos_by_priority.URGENT}
+                  </button>
                 </div>
               </div>
             </div>

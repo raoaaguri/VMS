@@ -354,10 +354,18 @@ export const api = {
     getAllHistory: () => apiRequest("/api/v1/vendor/history"),
     getPos: (params) => {
       const query = new URLSearchParams(params).toString();
-      return apiRequest(`/api/v1/vendor/pos${query ? `?${query}` : ""}`);
+      return apiRequest(`/api/v1/vendor/pos?${query}`);
     },
     getPoById: (id) => apiRequest(`/api/v1/vendor/pos/${id}`),
-    getPoHistory: (id) => apiRequest(`/api/v1/vendor/pos/${id}/history`),
+    updatePoStatus: (id, status) =>
+      apiRequest(`/api/v1/vendor/pos/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }),
+    getLineItemsByPriority: (params) => {
+      const query = new URLSearchParams(params).toString();
+      return apiRequest(`/api/v1/vendor/line-items-by-priority?${query}`);
+    },
     acceptPo: (id) =>
       apiRequest(`/api/v1/vendor/pos/${id}/accept`, {
         method: "POST",
