@@ -165,6 +165,12 @@ export async function getVendorLineItems(req, res, next) {
     conditions.push(`po.vendor_id = $${paramNum++}`);
     params.push(vendor_id);
 
+    // Add default filter for open items only (when no status is specified)
+    if (!status || status === "ALL") {
+      conditions.push(`poli.status IN ($${paramNum++}, $${paramNum++})`);
+      params.push("Pending", "Partially Delivered");
+    }
+
     // Apply period filter
     if (period && period !== "ALL") {
       const now = new Date();

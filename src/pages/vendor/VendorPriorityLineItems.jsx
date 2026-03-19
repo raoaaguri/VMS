@@ -553,7 +553,7 @@ export function VendorPriorityLineItems() {
                 {showStatusDropdown && (
                   <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                     <div className="p-2">
-                      {['Pending', 'Partially Delivered', 'Fully Delivered', 'Closed', 'Cancelled'].map(status => (
+                      {['Pending', 'Partially Delivered'].map(status => (
                         <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                           <input type="checkbox" checked={lineItemFilters.status.includes(status)} onChange={(e) => {
                             if (e.target.checked) setLineItemFilters({ ...lineItemFilters, status: [...lineItemFilters.status, status] });

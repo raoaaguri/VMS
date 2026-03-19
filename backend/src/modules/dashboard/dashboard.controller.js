@@ -49,11 +49,11 @@ export async function getAdminDashboardStats(req, res, next) {
       .eq("status", "DELIVERED")
       .gte("updated_at", yearAgo);
 
-    // Open POs by priority
+    // Open POs by priority (only open items)
     const { data: posByPriority } = await db
       .from("purchase_orders")
       .select("priority")
-      .neq("status", "DELIVERED");
+      .in("status", ["Pending", "Partially Delivered"]); // Only open items
 
     const priorityCounts = { LOW: 0, MEDIUM: 0, HIGH: 0, URGENT: 0 };
     posByPriority?.forEach((po) => {
@@ -128,29 +128,31 @@ export async function getVendorDashboardStats(req, res, next) {
       var delayedCount = 0;
     }
 
-    // Get ALL PO line items by priority for vendor
+    // Get ALL PO line items by priority for vendor (only open items)
     try {
       let vendorLineItems = await db
         .from("purchase_order_line_items")
         .select("line_priority, po_id")
-        .eq("vendor_id", vendor_id);
+        .eq("vendor_id", vendor_id)
+        .in("status", ["Pending", "Partially Delivered"]); // Only open items
 
       console.log(
-        "🔍 Vendor All Line Items (Direct):",
+        "🔍 Vendor Open Line Items (Direct):",
         vendorLineItems?.data?.length || 0,
         vendorLineItems,
       );
 
-      // If no results with vendor_id, try joining with purchase_orders
+      // If no results with vendor_id, try joining with purchase_orders (only open items)
       if (!vendorLineItems?.data || vendorLineItems.data.length === 0) {
         console.log("🔍 Trying join with purchase_orders...");
         const joinedLineItems = await db
           .from("purchase_order_line_items")
           .select("line_priority")
-          .eq("purchase_orders.vendor_id", vendor_id);
+          .eq("purchase_orders.vendor_id", vendor_id)
+          .in("status", ["Pending", "Partially Delivered"]); // Only open items
 
         console.log(
-          "🔍 Joined Line Items:",
+          "🔍 Joined Open Line Items:",
           joinedLineItems?.data?.length || 0,
           joinedLineItems,
         );
