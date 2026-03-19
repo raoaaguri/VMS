@@ -303,16 +303,9 @@ export async function getVendorLineItems(req, res, next) {
     // Get items with pagination
     const itemsSql = `
       SELECT 
-        poli.id,
-        poli.po_id,
-        po.po_number,
-        poli.product_code,
-        poli.product_name,
-        poli.quantity,
-        poli.line_priority,
-        poli.expected_delivery_date,
-        poli.status,
-        poli.category
+        poli.*,
+        po.po_number as order_no,
+        po.po_number
       FROM purchase_order_line_items poli
       JOIN purchase_orders po ON poli.po_id = po.id
       ${whereClause}
@@ -323,6 +316,30 @@ export async function getVendorLineItems(req, res, next) {
     params.push(limit, offset);
 
     const items = await query(itemsSql, params);
+    
+    // If detail_view is requested, return a structured "Virtual PO" response
+    if (req.query.detail_view === "true") {
+      const vendorResult = await query(
+        "SELECT id, code, name, contact_person, contact_email, contact_phone FROM vendors WHERE id = $1",
+        [vendor_id]
+      );
+      
+      const vendor = vendorResult[0] || null;
+      const priorityLabel = priority && priority !== "ALL" ? priority : "ALL";
+      
+      return res.json({
+        id: `priority-${priorityLabel.toLowerCase()}`,
+        po_number: `Priority: ${priorityLabel}`,
+        po_date: new Date().toISOString(),
+        status: "MULTI",
+        type: "FILTERED_VIEW",
+        priority: priorityLabel,
+        vendor_id: vendor_id,
+        vendor: vendor,
+        line_items: items || [],
+        is_virtual: true
+      });
+    }
 
     res.json({
       items: items || [],

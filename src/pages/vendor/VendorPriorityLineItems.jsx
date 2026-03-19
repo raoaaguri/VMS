@@ -1,231 +1,564 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
+import { Toast, useToast } from '../../components/Toast';
+import { Loader } from '../../components/Loader';
 import { TableCell, TableHeader } from '../../components/TableComponents';
-import { formatDate, formatPrice, formatCurrency } from '../../utils/formatters';
+import { ProductPopup } from '../../components/ProductPopup';
+import { formatDate, formatDateForInput, formatPrice, formatCurrency } from '../../utils/formatters';
 import { api } from '../../config/api';
-import { Package, Filter, Eye, CheckCircle, AlertCircle, ChevronDown, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Package, Building, CheckCircle, Calendar, History, X, Filter, Download, ChevronDown, List, LayoutGrid } from 'lucide-react';
 import { useSortableTable } from '../../hooks/useSortableTable';
+import * as XLSX from 'xlsx';
 
 const STATUSES = ['Pending', 'Partially Delivered', 'Fully Delivered', 'Closed', 'Cancelled'];
 
+const priorityColors = {
+  LOW: 'bg-gray-100 text-gray-800',
+  MEDIUM: 'bg-blue-100 text-blue-800',
+  HIGH: 'bg-orange-100 text-orange-800',
+  URGENT: 'bg-red-100 text-red-800'
+};
+
 const statusColors = {
-  'Pending': 'bg-blue-100 text-blue-800',
+  'Pending': 'bg-yellow-100 text-yellow-800',
   'Partially Delivered': 'bg-orange-100 text-orange-800',
   'Fully Delivered': 'bg-green-100 text-green-800',
   'Closed': 'bg-purple-100 text-purple-800',
   'Cancelled': 'bg-red-100 text-red-800'
 };
 
-const priorityColors = {
-  'LOW': 'text-gray-600',
-  'MEDIUM': 'text-blue-600',
-  'HIGH': 'text-orange-600',
-  'URGENT': 'text-red-600'
-};
-
 export function VendorPriorityLineItems() {
   const { priority } = useParams();
   const navigate = useNavigate();
-  const [lineItems, setLineItems] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const { toast, showSuccess, showError } = useToast();
+
+  const [po, setPo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState(['Pending', 'Partially Delivered']);
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [itemNameFilter, setItemNameFilter] = useState('');
-  const [styleFilter, setStyleFilter] = useState('ALL');
-  const [availableFilters, setAvailableFilters] = useState({
-    categories: [],
-    itemNames: [],
-    styles: []
-  });
+  const [lineItemFilters, setLineItemFilters] = useState({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', month: 'ALL', itemName: '', category: 'ALL' });
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const statusDropdownRef = useRef(null);
-
-  // Initialize sortable table with item_name as default sort
-  const { sortedData, requestSort, getSortIcon } = useSortableTable(lineItems, {
-    defaultSortKey: 'product_name',
-    defaultDirection: 'asc'
+  const [availableFilters, setAvailableFilters] = useState({
+    itemNames: [],
+    categories: [],
   });
+  const [lineItemPage, setLineItemPage] = useState(1);
+  const [lineItemPageSize, setLineItemPageSize] = useState(10); // Default to 10
+  const [updatingItemId, setUpdatingItemId] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showProductPopup, setShowProductPopup] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'tiles'
 
   useEffect(() => {
-    loadPriorityLineItems();
-  }, [priority, statusFilter, categoryFilter, itemNameFilter, styleFilter, page, pageSize]);
+    loadPriorityItems();
+  }, [priority]);
 
+  // Close dropdown when clicking outside
   useEffect(() => {
-    setPage(1);
-  }, [statusFilter, categoryFilter, itemNameFilter, styleFilter, pageSize]);
-
-  useEffect(() => {
-    // Extract available filters from loaded line items
-    extractAvailableFilters();
-  }, [lineItems]);
-
-  useEffect(() => {
-    // Close dropdown when clicking outside
     const handleClickOutside = (event) => {
+      if (showExportDropdown && !event.target.closest('.export-dropdown')) {
+        setShowExportDropdown(false);
+      }
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+        setShowStatusDropdown(false);
+      }
+      if (!event.target.closest('.status-dropdown-container')) {
         setShowStatusDropdown(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [showExportDropdown]);
 
-  const loadPriorityLineItems = async () => {
+  useEffect(() => {
+    setLineItemPage(1);
+  }, [lineItemFilters.status, lineItemFilters.priority, lineItemFilters.month, lineItemFilters.itemName, lineItemFilters.category, lineItemPageSize]);
+
+  useEffect(() => {
+    if (po?.line_items) {
+      extractAvailableFilters();
+    }
+  }, [po?.line_items]);
+
+  const handleProductClick = (item) => {
+    setSelectedProduct(item);
+    setShowProductPopup(true);
+  };
+
+  const closeProductPopup = () => {
+    setShowProductPopup(false);
+    setSelectedProduct(null);
+  };
+
+  const extractAvailableFilters = () => {
+    if (!po?.line_items) return;
+
+    const itemNames = new Set();
+    const categories = new Set();
+
+    po.line_items.forEach(item => {
+      if (item.product_name) itemNames.add(item.product_name);
+      if (item.category) categories.add(item.category);
+      else if (item.region) categories.add(item.region);
+    });
+
+    setAvailableFilters({
+      itemNames: Array.from(itemNames).sort(),
+      categories: Array.from(categories).sort(),
+    });
+  };
+
+  const exportPOData = () => {
+    if (!po) return;
+
+    const headers = [
+      'PO Number',
+      'Design Code',
+      'Combination Code',
+      'Product Name',
+      'Style',
+      'Sub-Style',
+      'Color',
+      'Sub-Color',
+      'Polish',
+      'Size',
+      'Weight',
+      'Quantity',
+      'Delivered Qty',
+      'Pending Qty',
+      'Price',
+      'MRP',
+      'Expected Date',
+      'Status',
+      'Priority'
+    ];
+
+    const csvContent = [
+      headers.join(','),
+      ...filteredLineItems.map(item => [
+        `"${item.po_number || ''}"`,
+        parseInt(item.design_code) || 0,
+        item.combination_code || 0,
+        `"${item.product_name || ''}"`,
+        `"${item.style || ''}"`,
+        `"${item.sub_style || ''}"`,
+        `"${item.color || ''}"`,
+        `"${item.sub_color || ''}"`,
+        `"${item.polish || ''}"`,
+        `"${item.size || ''}"`,
+        item.weight || 0,
+        item.quantity || 0,
+        item.received_qty || 0,
+        (item.quantity || 0) - (item.received_qty || 0),
+        item.price || 0,
+        item.mrp || 0,
+        formatDate(item.expected_delivery_date),
+        `"${item.status || ''}"`,
+        `"${item.line_priority || ''}"`
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${priority}_priority_items.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setShowExportDropdown(false);
+    showSuccess('Items exported successfully!');
+  };
+
+  const exportWithImage = () => {
+    if (!po) return;
+
+    const groupedItems = {};
+    const sortedItems = [...filteredLineItems].sort((a, b) => {
+      const designA = parseInt(a.design_code) || 0;
+      const designB = parseInt(b.design_code) || 0;
+      return designA - designB;
+    });
+
+    sortedItems.forEach(item => {
+      const designCode = item.design_code || 'Unknown';
+      if (!groupedItems[designCode]) {
+        groupedItems[designCode] = [];
+      }
+      groupedItems[designCode].push(item);
+    });
+
+    const designCodes = Object.keys(groupedItems);
+    const workbookData = [];
+
+    designCodes.forEach((designCode, index) => {
+      const items = groupedItems[designCode];
+      const headers = ['PO Number', 'Product Name', 'Image', 'D.No', 'COLOR', 'POLISH', 'STYLE', 'SIZE', 'Qty'];
+      workbookData.push(headers);
+
+      items.forEach((item) => {
+        const imageUrl = item.combination_code
+          ? `https://kushals-hq-prod.s3.amazonaws.com/images/${item.combination_code}.jpg`
+          : '';
+
+        const row = [
+          item.po_number || '',
+          item.product_name || '',
+          imageUrl,
+          item.design_code || '',
+          item.color || '',
+          item.polish || '',
+          item.style || '',
+          item.size || '',
+          item.quantity || 0
+        ];
+        workbookData.push(row);
+      });
+
+      if (index < designCodes.length - 1) {
+        workbookData.push(Array(9).fill(''));
+        workbookData.push(Array(9).fill(''));
+      }
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(workbookData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Items");
+
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${priority}_priority_items_with_images.xlsx`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setShowExportDropdown(false);
+    showSuccess('Items with images exported successfully!');
+  };
+
+  const getMonthDateRange = (filter) => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    switch (filter) {
+      case 'last_month':
+        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+        return {
+          start: lastMonthStart.toISOString().split('T')[0],
+          end: lastMonthEnd.toISOString().split('T')[0]
+        };
+      case 'last_2_months':
+        const twoMonthsStart = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+        return {
+          start: twoMonthsStart.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+      case 'last_3_months':
+        const threeMonthsStart = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+        return {
+          start: threeMonthsStart.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+      case 'last_6_months':
+        const sixMonthsStart = new Date(today.getFullYear(), today.getMonth() - 6, 1);
+        return {
+          start: sixMonthsStart.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+      default:
+        return null;
+    }
+  };
+
+  const loadPriorityItems = async () => {
     try {
       setLoading(true);
-      const params = {
+      const data = await api.vendor.getLineItemsByPriority({
         priority: priority,
-        page: page,
-        limit: pageSize  // Backend expects 'limit' not 'pageSize'
-      };
-
-      if (statusFilter && statusFilter.length > 0) params.status = statusFilter;
-      if (categoryFilter !== 'ALL') params.category = categoryFilter;
-      if (itemNameFilter) params.itemName = itemNameFilter;
-      if (styleFilter !== 'ALL') params.style = styleFilter;
-
-      const response = await api.vendor.getLineItemsByPriority(params);
-      setLineItems(response.items || []);  // Use "items" instead of "data"
-      setTotal(response.total || response.items?.length || 0);  // Handle missing total
+        detail_view: true,
+        limit: 1000
+      });
+      setPo(data);
     } catch (err) {
-      console.error('Failed to load priority line items:', err);
-      setError('Failed to load line items');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const extractAvailableFilters = () => {
-    if (!lineItems || lineItems.length === 0) return;
+  const handleUpdateExpectedDate = async (poId, lineItemId, date) => {
+    try {
+      setIsProcessing(true);
+      setUpdatingItemId(lineItemId);
 
-    const categories = new Set();
-    const itemNames = new Set();
-    const styles = new Set();
+      await api.vendor.updateLineItemExpectedDate(
+        poId,
+        lineItemId,
+        date
+      );
 
-    lineItems.forEach(item => {
-      // Extract categories
-      if (item.category) categories.add(item.category);
-      else if (item.region) categories.add(item.region);
+      setPo(prevPo => ({
+        ...prevPo,
+        line_items: prevPo.line_items.map(item =>
+          item.id === lineItemId ? { ...item, expected_delivery_date: date } : item
+        )
+      }));
 
-      // Extract item names
-      if (item.product_name) itemNames.add(item.product_name);
-
-      // Extract styles
-      if (item.style) styles.add(item.style);
-    });
-
-    setAvailableFilters({
-      categories: Array.from(categories).sort(),
-      itemNames: Array.from(itemNames).sort(),
-      styles: Array.from(styles).sort(),
-    });
+      showSuccess('Expected delivery date updated successfully!');
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      setUpdatingItemId(null);
+      setIsProcessing(false);
+    }
   };
 
-  const updateFilters = (nextFilters) => {
-    setPage(1);
-    setStatusFilter(nextFilters.status);
-    setCategoryFilter(nextFilters.category);
-    setItemNameFilter(nextFilters.itemName);
-    setStyleFilter(nextFilters.style);
-  };
+  const filteredLineItems = (po?.line_items || []).filter(item => {
+    if (lineItemFilters.status && lineItemFilters.status.length > 0 && !lineItemFilters.status.includes(item.status)) return false;
+    if (lineItemFilters.itemName !== '' && item.product_name !== lineItemFilters.itemName) return false;
 
-  const filteredLineItems = sortedData.filter(item => {
-    const statusMatch = statusFilter.length === 0 || statusFilter.includes(item.status);
+    const categoryMatch = lineItemFilters.category === 'ALL' ||
+      (item.category && item.category === lineItemFilters.category) ||
+      (!item.category && item.region === lineItemFilters.category);
+    if (!categoryMatch) return false;
 
-    // Category filter
-    const categoryMatch = categoryFilter === 'ALL' ||
-      (item.category && item.category === categoryFilter) ||
-      (!item.category && item.region === categoryFilter);
-
-    // Item Name filter
-    const itemNameMatch = itemNameFilter === '' ||
-      item.product_name === itemNameFilter;
-
-    // Style filter
-    const styleMatch = styleFilter === 'ALL' || item.style === styleFilter;
-
-    return statusMatch && categoryMatch && itemNameMatch && styleMatch;
+    let monthMatch = true;
+    if (lineItemFilters.month !== 'ALL' && lineItemFilters.month !== '' && item.created_at) {
+      const dateRange = getMonthDateRange(lineItemFilters.month);
+      if (dateRange) {
+        const itemDate = formatDateForInput(item.created_at);
+        monthMatch = itemDate >= dateRange.start && itemDate <= dateRange.end;
+      }
+    }
+    return monthMatch;
   });
 
-  const getPriorityDisplayName = (priority) => {
-    const names = {
-      'LOW': 'Low',
-      'MEDIUM': 'Medium',
-      'HIGH': 'High',
-      'URGENT': 'Urgent'
-    };
-    return names[priority] || priority;
+  const { sortedData, requestSort, getSortIcon } = useSortableTable(filteredLineItems, {
+    defaultSortKey: 'product_name',
+    defaultDirection: 'asc'
+  });
+
+  const totalLineItems = sortedData.length;
+  const totalPagesLineItems = Math.max(1, Math.ceil(totalLineItems / lineItemPageSize));
+  const startIndex = (lineItemPage - 1) * lineItemPageSize;
+  const endIndex = startIndex + lineItemPageSize;
+  const paginatedLineItems = sortedData.slice(startIndex, endIndex);
+
+  const getVisiblePageNumbersLineItems = () => {
+    if (totalPagesLineItems <= 5) return Array.from({ length: totalPagesLineItems }, (_, i) => i + 1);
+    let start = Math.max(1, lineItemPage - 2);
+    let end = Math.min(totalPagesLineItems, start + 4);
+    if (end - start < 4) start = Math.max(1, end - 4);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   };
 
-  const getStatusColor = (status) => {
-    return statusColors[status] || 'bg-gray-100 text-gray-800';
+  const TileComponent = ({ item }) => {
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [imageError, setImageError] = useState(false);
+    const imageUrl = item.combination_code
+      ? `https://kushals-hq-prod.s3.ap-south-1.amazonaws.com/images/${item.combination_code}.jpg`
+      : null;
+
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+        <div className="relative aspect-square bg-gray-100 flex items-center justify-center">
+          {imageUrl && !imageError ? (
+            <img
+              src={imageUrl}
+              alt={item.product_name || 'Product Image'}
+              className={`w-full h-full object-contain transition-opacity ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="text-gray-400 text-center">
+              <Package className="w-16 h-16 mx-auto mb-2" />
+              <p className="text-sm">No Image</p>
+            </div>
+          )}
+          <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 to-transparent p-3">
+            <div className="flex justify-between items-start text-white">
+              <div className="text-sm font-medium text-red-900">D.No: {item.design_code || '-'}</div>
+              <div className="text-sm font-medium text-red-900">C.No: {item.combination_code || '-'}</div>
+              <div className="text-sm font-medium text-red-900">PO: {item.po_number || '-'}</div>
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-3">
+            <div className="flex justify-between items-end text-white">
+              <div className="text-xs text-red-900">PLS: {item.polish || ''}</div>
+              <div className="text-xs text-red-900">CLR: {item.color || ''}</div>
+              <div className="text-xs text-red-900">Qty: {item.quantity || 0}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
-  const getPriorityColor = (priority) => {
-    return priorityColors[priority] || 'text-gray-600';
-  };
+  if (loading) {
+    return (
+      <Layout role="vendor">
+        <div className="text-center py-12">Loading...</div>
+      </Layout>
+    );
+  }
+
+  if (error || !po) {
+    return (
+      <Layout role="vendor">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+          {error || 'Items not found'}
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout role="vendor">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center space-x-3">
+      <Loader isLoading={isProcessing} message="Processing update..." />
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => { }} />}
+      <div className="">
+        <div>
           <button
             onClick={() => navigate('/vendor/dashboard')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Dashboard</span>
           </button>
-          <Package className="w-8 h-8 text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              PO Line Items - {getPriorityDisplayName(priority)} Priority
-            </h1>
-            <p className="text-sm text-gray-600">
-              All line items with {getPriorityDisplayName(priority).toLowerCase()} priority
-            </p>
-          </div>
-        </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between space-x-4 flex-wrap gap-2">
-            <div className="flex items-center space-x-4 flex-wrap gap-2">
-              <Filter className="w-5 h-5 text-gray-400" />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-3">
+              <Package className="w-8 h-8 text-blue-600" />
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{priority} Priority Items</h1>
+                <p className="text-gray-500 text-sm">All open line items with {priority} priority</p>
+              </div>
+            </div>
 
-              {/* Status Filter */}
-              <div className="relative" ref={statusDropdownRef}>
+            <div className="flex items-center space-x-3">
+              <div className="relative export-dropdown">
                 <button
-                  onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:border-gray-300 flex items-center space-x-2"
+                  onClick={() => setShowExportDropdown(!showExportDropdown)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                 >
-                  <span>Status ({statusFilter.length})</span>
+                  <Download className="w-4 h-4" />
+                  <span>Export</span>
                   <ChevronDown className="w-4 h-4" />
                 </button>
 
+                {showExportDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                    <button
+                      onClick={exportPOData}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center space-x-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Just Data</span>
+                    </button>
+                    <button
+                      onClick={exportWithImage}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center space-x-2"
+                    >
+                      <Package className="w-4 h-4" />
+                      <span>With Images</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+              <Package className="w-5 h-5" />
+              <span>Summary Information</span>
+            </h2>
+
+            <div className="grid grid-cols-2 gap-x-2">
+              <div className="space-y-3">
+                <div className='flex items-center gap-x-3'>
+                  <label className="text-sm text-gray-500">Priority :</label>
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[priority]}`}>
+                    {priority}
+                  </span>
+                </div>
+                <div className='flex items-center gap-x-3'>
+                  <label className="text-sm text-gray-500">Total Items :</label>
+                  <p className="text-gray-900 font-medium text-sm">{po.line_items.length}</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className='flex items-center gap-x-3'>
+                  <label className="text-sm text-gray-500">Status :</label>
+                  <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
+                    Active
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+              <Building className="w-5 h-5" />
+              <span>Vendor Information</span>
+            </h2>
+            <div className="space-y-3">
+              <div className='flex items-center gap-x-3'>
+                <label className="text-sm text-gray-500">Vendor Name :</label>
+                <p className="text-gray-900 font-medium text-sm">{po.vendor?.name}</p>
+              </div>
+              <div className='flex items-center gap-x-3'>
+                <label className="text-sm text-gray-500">Contact Person :</label>
+                <p className="text-gray-900 font-medium text-sm">{po.vendor?.contact_person}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Line Items</h2>
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button onClick={() => setViewMode('list')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}><List className="w-4 h-4" />List</button>
+              <button onClick={() => setViewMode('tiles')} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${viewMode === 'tiles' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}><LayoutGrid className="w-4 h-4" />Tiles</button>
+            </div>
+          </div>
+
+          <div className="flex gap-4 mb-4 items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <div className="relative status-dropdown-container">
+                <button type="button" onClick={() => setShowStatusDropdown(!showStatusDropdown)} className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 min-w-[150px] text-left bg-white">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">{lineItemFilters.status.length === 0 ? 'Select statuses...' : lineItemFilters.status.length === 1 ? lineItemFilters.status[0] : `${lineItemFilters.status.length} statuses selected`}</span>
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  </div>
+                </button>
                 {showStatusDropdown && (
-                  <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-10">
+                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                     <div className="p-2">
-                      {STATUSES.map(status => (
-                        <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded">
-                          <input
-                            type="checkbox"
-                            checked={statusFilter.includes(status)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setStatusFilter([...statusFilter, status]);
-                              } else {
-                                setStatusFilter(statusFilter.filter(s => s !== status));
-                              }
-                            }}
-                            className="rounded border-gray-300"
-                          />
+                      {['Pending', 'Partially Delivered', 'Fully Delivered', 'Closed', 'Cancelled'].map(status => (
+                        <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
+                          <input type="checkbox" checked={lineItemFilters.status.includes(status)} onChange={(e) => {
+                            if (e.target.checked) setLineItemFilters({ ...lineItemFilters, status: [...lineItemFilters.status, status] });
+                            else setLineItemFilters({ ...lineItemFilters, status: lineItemFilters.status.filter(s => s !== status) });
+                          }} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                           <span className="text-sm">{status}</span>
                         </label>
                       ))}
@@ -233,309 +566,124 @@ export function VendorPriorityLineItems() {
                   </div>
                 )}
               </div>
-
-              {/* Category Filter */}
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
-              >
-                <option value="ALL">All Categories</option>
-                {availableFilters.categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
+              <select value={lineItemFilters.month} onChange={(e) => setLineItemFilters({ ...lineItemFilters, month: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300">
+                <option value="ALL">All Periods</option>
+                <option value="last_month">Last Month</option>
+                <option value="last_2_months">Last 2 Months</option>
+                <option value="last_3_months">Last 3 Months</option>
+                <option value="last_6_months">Last 6 Months</option>
               </select>
-
-              {/* Item Name Filter */}
-              <select
-                value={itemNameFilter}
-                onChange={(e) => setItemNameFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
-              >
+              <select value={lineItemFilters.itemName} onChange={(e) => setLineItemFilters({ ...lineItemFilters, itemName: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 w-48">
                 <option value="">All Items</option>
-                {availableFilters.itemNames.map(itemName => (
-                  <option key={itemName} value={itemName}>{itemName}</option>
-                ))}
+                {availableFilters.itemNames.map(itemName => <option key={itemName} value={itemName}>{itemName}</option>)}
               </select>
-
-              {/* Style Filter */}
-              <select
-                value={styleFilter}
-                onChange={(e) => setStyleFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
-              >
-                <option value="ALL">All Styles</option>
-                {availableFilters.styles.map(style => (
-                  <option key={style} value={style}>{style}</option>
-                ))}
+              <select value={lineItemFilters.category} onChange={(e) => setLineItemFilters({ ...lineItemFilters, category: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300">
+                <option value="ALL">All Categories</option>
+                {availableFilters.categories.map(category => <option key={category} value={category}>{category}</option>)}
               </select>
             </div>
-
-            <button onClick={() => {
-              setStatusFilter(['Pending', 'Partially Delivered']);
-              setCategoryFilter('ALL');
-              setItemNameFilter('');
-              setStyleFilter('ALL');
-            }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-              Clear Filters
-            </button>
+            <button onClick={() => setLineItemFilters({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', month: 'ALL', itemName: '', category: 'ALL' })} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
-        </div>
 
-        {/* Results Summary */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-semibold">{filteredLineItems.length}</span> of{' '}
-              <span className="font-semibold">{total}</span> {getPriorityDisplayName(priority).toLowerCase()} priority line items
-            </p>
-
-            {/* Page Size */}
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              className="px-3 py-1 border border-gray-300 rounded focus:outline-none focus:border-gray-300"
-            >
-              <option value={10}>10 per page</option>
-              <option value={25}>25 per page</option>
-              <option value={50}>50 per page</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center py-12 text-red-600">
-              {error}
-            </div>
-          ) : filteredLineItems.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-gray-500">
-              No line items found for {getPriorityDisplayName(priority).toLowerCase()} priority
-            </div>
-          ) : (
+          {viewMode === 'list' ? (
             <div className="overflow-x-auto overflow-scroll">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <TableHeader
-                      columnName="design_code"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('design_code')}
-                    >
-                      Design No
-                    </TableHeader>
-                    <TableHeader
-                      columnName="combination_code"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('combination_code')}
-                    >
-                      Combination ID
-                    </TableHeader>
-                    <TableHeader
-                      columnName="product_name"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('product_name')}
-                    >
-                      Item Name
-                    </TableHeader>
-                    <TableHeader
-                      columnName="style"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('style')}
-                    >
-                      Style
-                    </TableHeader>
-                    <TableHeader
-                      columnName="color"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('color')}
-                    >
-                      Color
-                    </TableHeader>
-                    <TableHeader
-                      columnName="sub_color"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('sub_color')}
-                    >
-                      Sub-Color
-                    </TableHeader>
-                    <TableHeader
-                      columnName="polish"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('polish')}
-                    >
-                      Polish
-                    </TableHeader>
-                    <TableHeader
-                      columnName="size"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('size')}
-                    >
-                      Size
-                    </TableHeader>
-                    <TableHeader
-                      columnName="weight"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('weight')}
-                    >
-                      Weight
-                    </TableHeader>
-                    <TableHeader
-                      columnName="quantity"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('quantity')}
-                    >
-                      Order Qty
-                    </TableHeader>
-                    <TableHeader
-                      columnName="received_qty"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('received_qty')}
-                    >
-                      Delivered Qty
-                    </TableHeader>
-                    <TableHeader
-                      columnName="pending_qty"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('pending_qty')}
-                    >
-                      Pending Qty
-                    </TableHeader>
-                    <TableHeader
-                      columnName="price"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('price')}
-                    >
-                      Price
-                    </TableHeader>
-                    <TableHeader
-                      columnName="expected_delivery_date"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('expected_delivery_date')}
-                    >
-                      Expected Delivery Date
-                    </TableHeader>
-                    <TableHeader
-                      columnName="status"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('status')}
-                    >
-                      Status
-                    </TableHeader>
-                    <TableHeader
-                      columnName="priority"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('priority')}
-                    >
-                      Priority
-                    </TableHeader>
+                    <TableHeader columnName="po_number">PO No</TableHeader>
+                    <TableHeader columnName="design_code">Design No</TableHeader>
+                    <TableHeader columnName="combination_code">Combination ID</TableHeader>
+                    <TableHeader columnName="product_name">Item Name</TableHeader>
+                    <TableHeader columnName="style">Style</TableHeader>
+                    <TableHeader columnName="sub_style">Sub-Style</TableHeader>
+                    <TableHeader columnName="color">Color</TableHeader>
+                    <TableHeader columnName="sub_color">Sub-Color</TableHeader>
+                    <TableHeader columnName="polish">Polish</TableHeader>
+                    <TableHeader columnName="size">Size</TableHeader>
+                    <TableHeader columnName="weight">Weight</TableHeader>
+                    <TableHeader columnName="quantity">Order Qty</TableHeader>
+                    <TableHeader columnName="received_qty">Delivered Qty</TableHeader>
+                    <TableHeader columnName="pending_qty">Pending Qty</TableHeader>
+                    <TableHeader columnName="price">Price</TableHeader>
+                    <TableHeader columnName="mrp">MRP</TableHeader>
+                    <TableHeader columnName="expected_delivery_date">Expected Date</TableHeader>
+                    <TableHeader columnName="status">Status</TableHeader>
+                    <TableHeader columnName="line_priority">Priority</TableHeader>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredLineItems.length === 0 && (
-                    <tr>
-                      <td colSpan="17" className="px-4 py-8 text-center text-gray-500">
-                        No line items match the selected filters
-                      </td>
-                    </tr>
-                  )}
-                  {filteredLineItems.map(item => (
+                  {paginatedLineItems.map(item => (
                     <tr key={item.id} className="hover:bg-gray-50">
+                      <TableCell value={item.po_number} columnName="po_number" />
                       <TableCell value={parseInt(item.design_code) || 0} columnName="design_code" />
-                      <TableCell
-                        value={item.combination_code || 0}
-                        columnName="combination_code"
-                      />
+                      <TableCell value={item.combination_code || 0} columnName="combination_code" onClick={() => handleProductClick(item)} />
                       <TableCell value={item.product_name} columnName="product_name" />
-                      <TableCell value={item.style || '-'} columnName="style" />
-                      <TableCell value={item.color || '-'} columnName="color" />
-                      <TableCell value={item.sub_color || '-'} columnName="sub_color" />
-                      <TableCell value={item.polish || '-'} columnName="polish" />
-                      <TableCell value={item.size || '-'} columnName="size" />
-                      <TableCell value={item.weight || '-'} columnName="weight" />
-                      <TableCell value={item.quantity || 0} columnName="quantity" />
+                      <TableCell value={item.style} columnName="style" />
+                      <TableCell value={item.sub_style} columnName="sub_style" />
+                      <TableCell value={item.color} columnName="color" />
+                      <TableCell value={item.sub_color} columnName="sub_color" />
+                      <TableCell value={item.polish} columnName="polish" />
+                      <TableCell value={item.size} columnName="size" />
+                      <TableCell value={item.weight} columnName="weight" type="price" />
+                      <TableCell value={item.quantity} columnName="quantity" />
                       <TableCell value={item.received_qty || 0} columnName="received_qty" />
-                      <TableCell
-                        value={(parseInt(item.quantity) - parseInt(item.received_qty || 0)) || 0}
-                        columnName="pending_qty"
-                      />
-                      <TableCell value={formatPrice(item.price)} columnName="price" />
-                      <TableCell
-                        value={item.expected_delivery_date ? formatDate(item.expected_delivery_date) : '-'}
-                        columnName="expected_delivery_date"
-                      />
-                      <TableCell
-                        value={
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
-                            {item.status || 'Unknown'}
-                          </span>
-                        }
-                        columnName="status"
-                      />
-                      <TableCell
-                        value={
-                          <span className={`font-medium ${getPriorityColor(item.line_priority)}`}>
-                            {getPriorityDisplayName(item.line_priority)}
-                          </span>
-                        }
-                        columnName="priority"
-                      />
+                      <TableCell value={(item.quantity || 0) - (item.received_qty || 0)} columnName="pending_qty" />
+                      <TableCell value={item.price} columnName="price" type="currency" />
+                      <TableCell value={item.mrp} columnName="mrp" type="currency" />
+                      <td className="px-4 py-3 text-sm">
+                        {formatDateForInput(item.expected_delivery_date)}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${statusColors[item.status]}`}>
+                          {item.status.charAt(0) + item.status.slice(1).toLowerCase()}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[item.line_priority]}`}>
+                          {item.line_priority}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {paginatedLineItems.map((item) => <TileComponent key={item.id} item={item} />)}
+            </div>
           )}
-        </div>
 
-        {/* Pagination */}
-        {total > pageSize && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-700">
-                Page {page} of {Math.ceil(total / pageSize)}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
+            <div className="text-sm text-gray-600">Showing {totalLineItems === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, totalLineItems)} of {totalLineItems}</div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Rows per page</span>
+                <select
+                  value={lineItemPageSize}
+                  onChange={(e) => {
+                    setLineItemPage(1);
+                    setLineItemPageSize(parseInt(e.target.value, 10));
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 text-sm"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
               </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setPage(page - 1)}
-                  disabled={page === 1}
-                  className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setPage(page + 1)}
-                  disabled={page >= Math.ceil(total / pageSize)}
-                  className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Next
-                </button>
+
+              <div className="flex items-center gap-1">
+                <button onClick={() => setLineItemPage(p => Math.max(1, p - 1))} disabled={lineItemPage <= 1} className="px-3 py-2 text-sm rounded-md border">Prev</button>
+                {getVisiblePageNumbersLineItems().map(p => <button key={p} onClick={() => setLineItemPage(p)} className={`px-3 py-2 text-sm rounded-md border ${p === lineItemPage ? 'bg-blue-600 text-white' : ''}`}>{p}</button>)}
+                <button onClick={() => setLineItemPage(p => Math.min(totalPagesLineItems, p + 1))} disabled={lineItemPage >= totalPagesLineItems} className="px-3 py-2 text-sm rounded-md border">Next</button>
               </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
+      <ProductPopup isOpen={showProductPopup} onClose={closeProductPopup} product={selectedProduct} />
     </Layout>
   );
 }
