@@ -187,11 +187,10 @@ export async function getVendorLineItems(req, res, next) {
           startDate = new Date(now.getFullYear(), now.getMonth(), 1)
             .toISOString()
             .split("T")[0];
-          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-            .toISOString()
-            .split("T")[0];
+          endDate = today;
           break;
         case "LAST_MONTH":
+        case "last_month":
           startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
             .toISOString()
             .split("T")[0];
@@ -199,13 +198,22 @@ export async function getVendorLineItems(req, res, next) {
             .toISOString()
             .split("T")[0];
           break;
+        case "LAST_2_MONTHS":
+        case "last_2_months":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+            .toISOString()
+            .split("T")[0];
+          endDate = today;
+          break;
         case "LAST_3_MONTHS":
+        case "last_3_months":
           startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1)
             .toISOString()
             .split("T")[0];
           endDate = today;
           break;
         case "LAST_6_MONTHS":
+        case "last_6_months":
           startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1)
             .toISOString()
             .split("T")[0];
@@ -232,9 +240,9 @@ export async function getVendorLineItems(req, res, next) {
       }
 
       if (startDate && endDate) {
-        conditions.push(`poli.expected_delivery_date >= $${paramNum++}`);
+        conditions.push(`poli.created_at >= $${paramNum++}`);
         params.push(startDate);
-        conditions.push(`poli.expected_delivery_date <= $${paramNum++}`);
+        conditions.push(`poli.created_at <= $${paramNum++}`);
         params.push(endDate);
       }
     }
@@ -316,17 +324,17 @@ export async function getVendorLineItems(req, res, next) {
     params.push(limit, offset);
 
     const items = await query(itemsSql, params);
-    
+
     // If detail_view is requested, return a structured "Virtual PO" response
     if (req.query.detail_view === "true") {
       const vendorResult = await query(
         "SELECT id, code, name, contact_person, contact_email, contact_phone FROM vendors WHERE id = $1",
-        [vendor_id]
+        [vendor_id],
       );
-      
+
       const vendor = vendorResult[0] || null;
       const priorityLabel = priority && priority !== "ALL" ? priority : "ALL";
-      
+
       return res.json({
         id: `priority-${priorityLabel.toLowerCase()}`,
         po_number: `Priority: ${priorityLabel}`,
@@ -337,7 +345,7 @@ export async function getVendorLineItems(req, res, next) {
         vendor_id: vendor_id,
         vendor: vendor,
         line_items: items || [],
-        is_virtual: true
+        is_virtual: true,
       });
     }
 

@@ -279,14 +279,10 @@ export function VendorLineItems() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="ALL">All Periods</option>
-                  <option value="TODAY">Today</option>
-                  <option value="THIS_WEEK">This Week</option>
-                  <option value="THIS_MONTH">This Month</option>
-                  <option value="LAST_MONTH">Last Month</option>
-                  <option value="LAST_3_MONTHS">Last 3 Months</option>
-                  <option value="LAST_6_MONTHS">Last 6 Months</option>
-                  <option value="THIS_YEAR">This Year</option>
-                  <option value="LAST_YEAR">Last Year</option>
+                  <option value="last_month">Last Month</option>
+                  <option value="last_2_months">Last 2 Months</option>
+                  <option value="last_3_months">Last 3 Months</option>
+                  <option value="last_6_months">Last 6 Months</option>
                 </select>
               </div>
             </div>

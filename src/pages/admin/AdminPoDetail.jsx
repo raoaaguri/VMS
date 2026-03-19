@@ -51,6 +51,7 @@ export function AdminPoDetail() {
     category: 'ALL',
     itemName: '',
     style: 'ALL',
+    month: 'ALL',
   });
   const [availableFilters, setAvailableFilters] = useState({
     categories: [],
@@ -300,6 +301,46 @@ export function AdminPoDetail() {
     showSuccess('PO data with images exported successfully!');
   };
 
+  // Calculate date range for month filters
+  const getMonthDateRange = (filter) => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+
+    switch (filter) {
+      case 'last_month':
+        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0); // Last day of previous month
+        return {
+          start: lastMonthStart.toISOString().split('T')[0],
+          end: lastMonthEnd.toISOString().split('T')[0]
+        };
+
+      case 'last_2_months':
+        const twoMonthsStart = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+        return {
+          start: twoMonthsStart.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+
+      case 'last_3_months':
+        const threeMonthsStart = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+        return {
+          start: threeMonthsStart.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+
+      case 'last_6_months':
+        const sixMonthsStart = new Date(today.getFullYear(), today.getMonth() - 6, 1);
+        return {
+          start: sixMonthsStart.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+
+      default:
+        return null;
+    }
+  };
+
   useEffect(() => {
     setLineItemPage(1);
   }, [lineItemFilters.status, lineItemFilters.priority, lineItemFilters.month, lineItemFilters.category, lineItemFilters.itemName, lineItemFilters.style, lineItemFilters.brand, lineItemPageSize]);
@@ -395,7 +436,17 @@ export function AdminPoDetail() {
     // Style filter
     const styleMatch = lineItemFilters.style === 'ALL' || item.style === lineItemFilters.style;
 
-    return statusMatch && priorityMatch && categoryMatch && itemNameMatch && styleMatch;
+    // Month filter
+    let monthMatch = true;
+    if (lineItemFilters.month !== 'ALL' && lineItemFilters.month !== '' && item.created_at) {
+      const dateRange = getMonthDateRange(lineItemFilters.month);
+      if (dateRange) {
+        const itemDate = formatDateForInput(item.created_at);
+        monthMatch = itemDate >= dateRange.start && itemDate <= dateRange.end;
+      }
+    }
+
+    return statusMatch && priorityMatch && categoryMatch && itemNameMatch && styleMatch && monthMatch;
   }) || [];
 
   const { sortedData, requestSort, getSortIcon } = useSortableTable(filteredLineItems, {
@@ -842,77 +893,17 @@ export function AdminPoDetail() {
               </select>
 
               {/* Month Filter */}
-              {/* <div className="relative" ref={monthDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowMonthDropdown(!showMonthDropdown)}
-                  className="ml-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 min-w-[150px] text-left bg-white"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">
-                      {lineItemFilters.month === 'ALL' || lineItemFilters.month === '' ? 'Select period...' :
-                        lineItemFilters.month === 'last_month' ? 'Last Month' :
-                          lineItemFilters.month === 'last_2_months' ? 'Last 2 Months' :
-                            lineItemFilters.month === 'last_3_months' ? 'Last 3 Months' :
-                              lineItemFilters.month === 'last_6_months' ? 'Last 6 Months' :
-                                lineItemFilters.month}
-                    </span>
-                    <ChevronDown className="w-4 h-4 text-gray-400" />
-                  </div>
-                </button>
-
-                {showMonthDropdown && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                    <div className="p-2">
-                      <div
-                        onClick={() => {
-                          setLineItemFilters({ ...lineItemFilters, month: 'ALL' });
-                          setShowMonthDropdown(false);
-                        }}
-                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
-                      >
-                        All Periods
-                      </div>
-                      <div
-                        onClick={() => {
-                          setLineItemFilters({ ...lineItemFilters, month: 'last_month' });
-                          setShowMonthDropdown(false);
-                        }}
-                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
-                      >
-                        Last Month
-                      </div>
-                      <div
-                        onClick={() => {
-                          setLineItemFilters({ ...lineItemFilters, month: 'last_2_months' });
-                          setShowMonthDropdown(false);
-                        }}
-                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
-                      >
-                        Last 2 Months
-                      </div>
-                      <div
-                        onClick={() => {
-                          setLineItemFilters({ ...lineItemFilters, month: 'last_3_months' });
-                          setShowMonthDropdown(false);
-                        }}
-                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
-                      >
-                        Last 3 Months
-                      </div>
-                      <div
-                        onClick={() => {
-                          setLineItemFilters({ ...lineItemFilters, month: 'last_6_months' });
-                          setShowMonthDropdown(false);
-                        }}
-                        className="p-2 text-sm cursor-pointer hover:bg-gray-100 rounded"
-                      >
-                        Last 6 Months
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div> */}
+              <select
+                value={lineItemFilters.month}
+                onChange={(e) => setLineItemFilters({ ...lineItemFilters, month: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+              >
+                <option value="ALL">All Periods</option>
+                <option value="last_month">Last Month</option>
+                <option value="last_2_months">Last 2 Months</option>
+                <option value="last_3_months">Last 3 Months</option>
+                <option value="last_6_months">Last 6 Months</option>
+              </select>
 
               {/* Category Filter */}
               <select
@@ -970,6 +961,7 @@ export function AdminPoDetail() {
                 category: 'ALL',
                 itemName: '',
                 style: 'ALL',
+                month: 'ALL',
               });
             }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
