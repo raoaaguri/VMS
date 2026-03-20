@@ -10,7 +10,7 @@ import {
 
 import { query, transaction } from "../../config/db.js";
 
-const EXTERNAL_PORTAL_BASE_URL = "https://ditos.technoboost.in";
+const EXTERNAL_PORTAL_BASE_URL = "https://ditos2.technoboost.in";
 
 const DELIVERY_DATE_TOKEN =
   "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.-HW681gJT1xI_2L8j0hb_yXjuNGUv4PRXOc39Vt3vbA";
