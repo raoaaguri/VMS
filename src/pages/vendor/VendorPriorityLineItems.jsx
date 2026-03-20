@@ -631,7 +631,13 @@ export function VendorPriorityLineItems() {
                           <TableCell value={(item.quantity || 0) - (item.received_qty || 0)} columnName="pending_qty" />
                           <TableCell value={item.price} columnName="price" type="currency" />
                           <td className="px-4 py-3 text-sm">
-                            {formatDateForInput(item.expected_delivery_date)}
+                            <input
+                              type="date"
+                              value={formatDateForInput(item.expected_delivery_date)}
+                              onChange={(e) => handleUpdateExpectedDate(po?.id, item.id, e.target.value)}
+                              className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-sm w-full"
+                              disabled={isProcessing || updatingItemId === item.id}
+                            />
                           </td>
                           <td className="px-4 py-3 text-sm">
                             <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${statusColors[item.status]}`}>

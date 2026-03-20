@@ -512,7 +512,7 @@ export function AdminPoDetail() {
               </div>
 
               <div className="text-sm font-medium text-[#d82953]">
-                PO: {po?.po_number || '-'}
+                PO: {po?.po_number?.replace(/^PO/, '') || '-'}
               </div>
             </div>
           </div>
