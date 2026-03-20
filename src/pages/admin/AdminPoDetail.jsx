@@ -985,7 +985,7 @@ export function AdminPoDetail() {
                       onSort={requestSort}
                       sortDirection={getSortIcon('combination_code')}
                     >
-                      Combination Code
+                      Combination ID
                     </TableHeader>
                     <TableHeader
                       columnName="product_name"
