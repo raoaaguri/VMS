@@ -12,6 +12,7 @@ const STATUSES = ['Draft', 'Pending', 'Partially Delivered', 'Fully Delivered', 
 export function AdminLineItems() {
   const navigate = useNavigate();
   const [lineItems, setLineItems] = useState([]);
+  const [allLineItems, setAllLineItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -38,6 +39,7 @@ export function AdminLineItems() {
 
   useEffect(() => {
     fetchLineItems();
+    fetchAllItemNames(); // Fetch all items for dropdown
   }, [filters, page, pageSize]);
 
   useEffect(() => {
@@ -45,11 +47,11 @@ export function AdminLineItems() {
   }, []);
 
   useEffect(() => {
-    if (lineItems.length > 0) {
-      const itemNames = [...new Set(lineItems.map(item => item.product_name).filter(Boolean))].sort();
+    if (allLineItems.length > 0) {
+      const itemNames = [...new Set(allLineItems.map(item => item.product_name).filter(Boolean))].sort();
       setAvailableItemNames(itemNames);
     }
-  }, [lineItems]);
+  }, [allLineItems]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -179,6 +181,16 @@ export function AdminLineItems() {
       console.error('Failed to fetch line items:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAllItemNames = async () => {
+    try {
+      const params = { limit: 10000 }; // Get all items for dropdown
+      const response = await api.admin.getLineItems(params);
+      setAllLineItems(response.items || []);
+    } catch (error) {
+      console.error('Failed to fetch all item names:', error);
     }
   };
 
@@ -515,7 +527,7 @@ export function AdminLineItems() {
                           className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                           onClick={() => requestSort('expected_delivery_date')}
                         >
-                          Expected Delivery {getSortIcon('expected_delivery_date')}
+                          Expected Delivery Date {getSortIcon('expected_delivery_date')}
                         </th>
                         <th
                           className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"

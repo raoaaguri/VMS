@@ -407,7 +407,6 @@ export async function getAllHistory(filters = {}, limit = null, offset = null) {
   const whereClause = filters.vendor_id
     ? ` WHERE po.vendor_id = $${paramNum++}`
     : "";
-
   if (filters.vendor_id) {
     params.push(filters.vendor_id);
   }
@@ -470,9 +469,14 @@ export async function getAllHistory(filters = {}, limit = null, offset = null) {
         : "Unknown Item",
   }));
 
-  const allHistory = [...poHistory, ...lineItemHistory].sort(
+  let allHistory = [...poHistory, ...lineItemHistory].sort(
     (a, b) => new Date(b.changed_at) - new Date(a.changed_at),
   );
+
+  // Apply level filter if provided
+  if (filters.level && filters.level !== "ALL") {
+    allHistory = allHistory.filter((h) => h.level === filters.level);
+  }
 
   // Apply pagination if needed
   const total = allHistory.length;

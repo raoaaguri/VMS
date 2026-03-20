@@ -390,16 +390,16 @@ export function VendorPriorityLineItems() {
           )}
           <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 to-transparent p-3">
             <div className="flex justify-between items-start text-white">
-              <div className="text-sm font-medium text-red-900">D.No: {item.design_code || '-'}</div>
-              <div className="text-sm font-medium text-red-900">C.No: {item.combination_code || '-'}</div>
-              <div className="text-sm font-medium text-red-900">PO: {item.po_number || '-'}</div>
+              <div className="text-sm font-medium text-[#d82953]">D.No: {item.design_code || '-'}</div>
+              <div className="text-sm font-medium text-[#d82953]">C.ID: {item.combination_code || '-'}</div>
+              <div className="text-sm font-medium text-[#d82953]">PO: {item.order_no?.replace(/^PO/, '') || '-' || '-'}</div>
             </div>
           </div>
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-3">
             <div className="flex justify-between items-end text-white">
-              <div className="text-xs text-red-900">PLS: {item.polish || ''}</div>
-              <div className="text-xs text-red-900">CLR: {item.color || ''}</div>
-              <div className="text-xs text-red-900">Qty: {item.quantity || 0}</div>
+              <div className="text-sm font-medium text-[#d82953]">PLS: {item.polish || ''}</div>
+              <div className="text-sm font-medium text-[#d82953]">CLR: {item.color || ''}</div>
+              <div className="text-sm font-medium text-[#d82953]">Qty: {item.quantity || 0}</div>
             </div>
           </div>
         </div>

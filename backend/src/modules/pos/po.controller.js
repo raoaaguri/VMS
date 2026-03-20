@@ -316,6 +316,11 @@ export async function getAllHistory(req, res, next) {
       filters.vendor_id = req.user.vendor_id;
     }
 
+    // Add level filter if provided
+    if (req.query.level && req.query.level !== "ALL") {
+      filters.level = req.query.level;
+    }
+
     // Add pagination parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
