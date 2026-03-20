@@ -15,7 +15,7 @@ export function VendorLineItems() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
   const [filters, setFilters] = useState({
     status: ['Pending', 'Partially Delivered'],
     priority: 'ALL',
@@ -27,7 +27,10 @@ export function VendorLineItems() {
   const statusDropdownRef = useRef(null);
   const [availableItemNames, setAvailableItemNames] = useState([]);
   const [availableCategories, setAvailableCategories] = useState([]);
-  const { sortedData, requestSort, getSortIcon } = useSortableTable(lineItems);
+  const { sortedData, requestSort, getSortIcon } = useSortableTable(lineItems, {
+    defaultSortKey: 'product_name',
+    defaultDirection: 'asc'
+  });
 
   useEffect(() => {
     fetchLineItems();
@@ -143,9 +146,7 @@ export function VendorLineItems() {
           <div className="flex gap-4 mb-6 justify-between items-end">
             <div className="flex items-center gap-x-4">
               <div className="">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
+
                 <div className="flex items-center space-x-2">
                   <div className="relative status-dropdown-container">
                     <button
@@ -164,7 +165,7 @@ export function VendorLineItems() {
                     </button>
 
                     {showStatusDropdown && (
-                      <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                      <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                         <div className="p-2">
                           <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                             <input
@@ -221,9 +222,7 @@ export function VendorLineItems() {
               </div>
 
               <div className="">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Priority
-                </label>
+
                 <select
                   value={filters.priority}
                   onChange={(e) => updateFilters({ ...filters, priority: e.target.value })}
@@ -238,25 +237,20 @@ export function VendorLineItems() {
               </div>
 
               <div className="">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Item Name
-                </label>
                 <select
-                  value={filters.itemName}
-                  onChange={(e) => updateFilters({ ...filters, itemName: e.target.value })}
+                  value={filters.period}
+                  onChange={(e) => updateFilters({ ...filters, period: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">All Items</option>
-                  {availableItemNames.map(itemName => (
-                    <option key={itemName} value={itemName}>{itemName}</option>
-                  ))}
+                  <option value="ALL">All Periods</option>
+                  <option value="last_month">Last Month</option>
+                  <option value="last_2_months">Last 2 Months</option>
+                  <option value="last_3_months">Last 3 Months</option>
+                  <option value="last_6_months">Last 6 Months</option>
                 </select>
               </div>
 
               <div className="">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Master Category
-                </label>
                 <select
                   value={filters.category}
                   onChange={(e) => updateFilters({ ...filters, category: e.target.value })}
@@ -270,21 +264,19 @@ export function VendorLineItems() {
               </div>
 
               <div className="">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Period
-                </label>
                 <select
-                  value={filters.period}
-                  onChange={(e) => updateFilters({ ...filters, period: e.target.value })}
+                  value={filters.itemName}
+                  onChange={(e) => updateFilters({ ...filters, itemName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="ALL">All Periods</option>
-                  <option value="last_month">Last Month</option>
-                  <option value="last_2_months">Last 2 Months</option>
-                  <option value="last_3_months">Last 3 Months</option>
-                  <option value="last_6_months">Last 6 Months</option>
+                  <option value="">All Items</option>
+                  {availableItemNames.map(itemName => (
+                    <option key={itemName} value={itemName}>{itemName}</option>
+                  ))}
                 </select>
               </div>
+
+
             </div>
             <button onClick={() => {
               updateFilters({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', itemName: '', category: 'ALL', period: 'ALL' });
@@ -301,91 +293,95 @@ export function VendorLineItems() {
               No line items found
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('po_number')}
-                    >
-                      PO Number {getSortIcon('po_number')}
-                    </th>
-                    <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('product_code')}
-                    >
-                      Product Code {getSortIcon('product_code')}
-                    </th>
-                    <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('product_name')}
-                    >
-                      Product Name {getSortIcon('product_name')}
-                    </th>
-                    <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('quantity')}
-                    >
-                      Quantity {getSortIcon('quantity')}
-                    </th>
-                    <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('ReceivedQty')}
-                    >
-                      Received Qty {getSortIcon('ReceivedQty')}
-                    </th>
-                    <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('line_priority')}
-                    >
-                      Priority {getSortIcon('line_priority')}
-                    </th>
-                    <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('expected_delivery_date')}
-                    >
-                      Expected Delivery {getSortIcon('expected_delivery_date')}
-                    </th>
-                    <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => requestSort('status')}
-                    >
-                      Status {getSortIcon('status')}
-                    </th>
-                    <TableHeader columnName="delayed">Delayed</TableHeader>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedData.map((item) => (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(`/vendor/pos/${item.po_id}`)}
-                    >
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600">
-                        {item.po_number}
-                      </td>
-                      <TableCell value={parseInt(item.product_code) || 0} columnName="product_code" />
-                      <TableCell value={item.product_name} columnName="product_name" />
-                      <TableCell value={item.quantity} columnName="quantity" />
-                      <TableCell value={item.received_qty || 0} columnName="received_qty" />
-                      <td className="px-4 py-3 whitespace-nowrap text-sm">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(item.line_priority)}`}>
-                          {item.line_priority}
-                        </span>
-                      </td>
-                      <TableCell value={item.expected_delivery_date} columnName="expected_delivery_date" type="date" />
-                      <td className="px-4 py-3 whitespace-nowrap text-sm">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <TableCell value={item.is_delayed ? 'Yes' : 'No'} columnName="delayed" />
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <div className="max-h-96 overflow-y-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
+                      <tr>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          onClick={() => requestSort('po_number')}
+                        >
+                          PO Number {getSortIcon('po_number')}
+                        </th>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          onClick={() => requestSort('product_code')}
+                        >
+                          Product Code {getSortIcon('product_code')}
+                        </th>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          onClick={() => requestSort('product_name')}
+                        >
+                          Item Name {getSortIcon('product_name')}
+                        </th>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          onClick={() => requestSort('quantity')}
+                        >
+                          Quantity {getSortIcon('quantity')}
+                        </th>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          onClick={() => requestSort('ReceivedQty')}
+                        >
+                          Received Qty {getSortIcon('ReceivedQty')}
+                        </th>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          onClick={() => requestSort('line_priority')}
+                        >
+                          Priority {getSortIcon('line_priority')}
+                        </th>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          onClick={() => requestSort('expected_delivery_date')}
+                        >
+                          Expected Delivery {getSortIcon('expected_delivery_date')}
+                        </th>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          onClick={() => requestSort('status')}
+                        >
+                          Status {getSortIcon('status')}
+                        </th>
+                        <TableHeader columnName="delayed">Delayed</TableHeader>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {sortedData.map((item) => (
+                        <tr
+                          key={item.id}
+                          className="hover:bg-gray-50 cursor-pointer"
+                          onClick={() => navigate(`/vendor/pos/${item.po_id}`)}
+                        >
+                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600">
+                            {item.po_number}
+                          </td>
+                          <TableCell value={parseInt(item.product_code) || 0} columnName="product_code" />
+                          <TableCell value={item.product_name} columnName="product_name" />
+                          <TableCell value={item.quantity} columnName="quantity" />
+                          <TableCell value={item.received_qty || 0} columnName="received_qty" />
+                          <td className="px-4 py-3 whitespace-nowrap text-sm">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(item.line_priority)}`}>
+                              {item.line_priority}
+                            </span>
+                          </td>
+                          <TableCell value={item.expected_delivery_date} columnName="expected_delivery_date" type="date" />
+                          <td className="px-4 py-3 whitespace-nowrap text-sm">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+                              {item.status}
+                            </span>
+                          </td>
+                          <TableCell value={item.is_delayed ? 'Yes' : 'No'} columnName="delayed" />
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
@@ -405,10 +401,9 @@ export function VendorLineItems() {
                     }}
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
                     <option value={50}>50</option>
                     <option value={75}>75</option>
+                    <option value={100}>100</option>
                   </select>
                 </div>
 

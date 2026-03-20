@@ -318,7 +318,7 @@ export async function getAllHistory(req, res, next) {
 
     // Add pagination parameters
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 50;
     const offset = (page - 1) * limit;
 
     const history = await poService.getAllHistory(filters, limit, offset);

@@ -19,7 +19,7 @@ export function VendorManagement() {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvalModalData, setApprovalModalData] = useState({ vendor: null, action: null });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
 
   const navigate = useNavigate();
 
@@ -517,101 +517,103 @@ export function VendorManagement() {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mt-3">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <TableHeader columnName="name">Vendor Name</TableHeader>
-                    <TableHeader columnName="code">Code</TableHeader>
-                    <TableHeader columnName="contact">Contact</TableHeader>
-                    <TableHeader columnName="approval_status">Approval Status</TableHeader>
-                    <TableHeader columnName="active_status">Active Status</TableHeader>
-                    <TableHeader columnName="actions">Actions</TableHeader>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedVendors.map(vendor => (
-                    <tr key={vendor.id} className="hover:bg-gray-50 transition-colors">
-                      <TableCell value={vendor.name} columnName="name" />
-                      <TableCell value={vendor.code || '-'} columnName="code" />
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div>
-                          <p className="font-medium text-gray-900">{vendor.contact_person}</p>
-                          <p className="text-xs text-gray-400">{vendor.contact_email}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${vendor.status === 'ACTIVE'
-                          ? 'bg-green-100 text-green-800'
-                          : vendor.status === 'PENDING_APPROVAL'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                          }`}>
-                          {vendor.status === 'PENDING_APPROVAL' ? '⏳ Pending' : vendor.status === 'ACTIVE' ? '✓ Active' : '✕ Rejected'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => handleToggleVendorStatus(vendor.id, vendor.is_active)}
-                          className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${vendor.is_active
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                            }`}
-                        >
-                          {vendor.is_active ? '🟢 Active' : '⭕ Inactive'}
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm relative">
-                        <div className="relative group">
-                          <button
-                            onClick={() => setExpandedActionsId(expandedActionsId === vendor.id ? null : vendor.id)}
-                            className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                            title="More actions"
-                          >
-                            <ChevronDown className="w-4 h-4" />
-                          </button>
-
-                          {expandedActionsId === vendor.id && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                              {vendor.status === 'PENDING_APPROVAL' && (
-                                <>
-                                  <button
-                                    onClick={() => openApprovalModal(vendor, 'approve')}
-                                    className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 font-medium flex items-center space-x-2 border-b border-gray-100"
-                                  >
-                                    <CheckCircle className="w-4 h-4" />
-                                    <span>Approve Vendor</span>
-                                  </button>
-                                  <button
-                                    onClick={() => openApprovalModal(vendor, 'reject')}
-                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium flex items-center space-x-2"
-                                  >
-                                    <XCircle className="w-4 h-4" />
-                                    <span>Reject Vendor</span>
-                                  </button>
-                                </>
-                              )}
-
-                              {vendor.status === 'ACTIVE' && (
-                                <>
-                                  <button
-                                    onClick={() => openEditForm(vendor)}
-                                    className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium flex items-center space-x-2"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                    <span>Edit Vendor</span>
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </td>
+              <div className="max-h-96 overflow-y-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                    <tr>
+                      <TableHeader columnName="name">Vendor Name</TableHeader>
+                      <TableHeader columnName="code">Code</TableHeader>
+                      <TableHeader columnName="contact">Contact</TableHeader>
+                      <TableHeader columnName="approval_status">Approval Status</TableHeader>
+                      <TableHeader columnName="active_status">Active Status</TableHeader>
+                      <TableHeader columnName="actions">Actions</TableHeader>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedVendors.map(vendor => (
+                      <tr key={vendor.id} className="hover:bg-gray-50 transition-colors">
+                        <TableCell value={vendor.name} columnName="name" />
+                        <TableCell value={vendor.code || '-'} columnName="code" />
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div>
+                            <p className="font-medium text-gray-900">{vendor.contact_person}</p>
+                            <p className="text-xs text-gray-400">{vendor.contact_email}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-3 py-1 text-xs font-medium rounded-full ${vendor.status === 'ACTIVE'
+                            ? 'bg-green-100 text-green-800'
+                            : vendor.status === 'PENDING_APPROVAL'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                            }`}>
+                            {vendor.status === 'PENDING_APPROVAL' ? '⏳ Pending' : vendor.status === 'ACTIVE' ? '✓ Active' : '✕ Rejected'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => handleToggleVendorStatus(vendor.id, vendor.is_active)}
+                            className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${vendor.is_active
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                              }`}
+                          >
+                            {vendor.is_active ? '🟢 Active' : '⭕ Inactive'}
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm relative">
+                          <div className="relative group">
+                            <button
+                              onClick={() => setExpandedActionsId(expandedActionsId === vendor.id ? null : vendor.id)}
+                              className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                              title="More actions"
+                            >
+                              <ChevronDown className="w-4 h-4" />
+                            </button>
+
+                            {expandedActionsId === vendor.id && (
+                              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                                {vendor.status === 'PENDING_APPROVAL' && (
+                                  <>
+                                    <button
+                                      onClick={() => openApprovalModal(vendor, 'approve')}
+                                      className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 font-medium flex items-center space-x-2 border-b border-gray-100"
+                                    >
+                                      <CheckCircle className="w-4 h-4" />
+                                      <span>Approve Vendor</span>
+                                    </button>
+                                    <button
+                                      onClick={() => openApprovalModal(vendor, 'reject')}
+                                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium flex items-center space-x-2"
+                                    >
+                                      <XCircle className="w-4 h-4" />
+                                      <span>Reject Vendor</span>
+                                    </button>
+                                  </>
+                                )}
+
+                                {vendor.status === 'ACTIVE' && (
+                                  <>
+                                    <button
+                                      onClick={() => openEditForm(vendor)}
+                                      className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium flex items-center space-x-2"
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                      <span>Edit Vendor</span>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -632,10 +634,9 @@ export function VendorManagement() {
                   }}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
                 >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
                   <option value={50}>50</option>
                   <option value={75}>75</option>
+                  <option value={100}>100</option>
                 </select>
               </div>
 

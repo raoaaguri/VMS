@@ -44,7 +44,7 @@ export function AdminPoDetail() {
   const [showHistory, setShowHistory] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [lineItemPage, setLineItemPage] = useState(1);
-  const [lineItemPageSize, setLineItemPageSize] = useState(10);
+  const [lineItemPageSize, setLineItemPageSize] = useState(50);
   const [lineItemFilters, setLineItemFilters] = useState({
     status: ['Pending', 'Partially Delivered'],
     priority: 'ALL',
@@ -504,14 +504,14 @@ export function AdminPoDetail() {
           {/* Top overlay */}
           <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 to-transparent p-3">
             <div className="flex justify-between items-start text-white">
-              <div className="text-xs font-medium text-red-900">
+              <div className="text-xs font-medium text-[#d82953]">
                 D.No: {item.design_code || '-'}
               </div>
-              <div className="text-sm font-medium text-red-900">
-                C.No: {item.combination_code || '-'}
+              <div className="text-sm font-medium text-[#d82953]">
+                C.ID: {item.combination_code || '-'}
               </div>
 
-              <div className="text-sm font-medium text-red-900">
+              <div className="text-sm font-medium text-[#d82953]">
                 PO: {po?.po_number || '-'}
               </div>
             </div>
@@ -527,13 +527,13 @@ export function AdminPoDetail() {
                   year: 'numeric'
                 }) : '-'}
               </div> */}
-              <div className="text-xs text-red-900">
+              <div className="text-sm font-medium text-[#d82953]">
                 PLS: {item.polish || ''}
               </div>
-              <div className="text-xs text-red-900">
+              <div className="text-sm font-medium text-[#d82953]">
                 CLR: {item.color || ''}
               </div>
-              <div className="text-xs text-red-900">
+              <div className="text-sm font-medium text-[#d82953]">
                 Qty: {item.quantity || 0}
               </div>
             </div>
@@ -797,7 +797,7 @@ export function AdminPoDetail() {
                 </button>
 
                 {showStatusDropdown && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                  <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                     <div className="p-2">
                       <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                         <input
@@ -905,6 +905,18 @@ export function AdminPoDetail() {
                 <option value="last_6_months">Last 6 Months</option>
               </select>
 
+              {/* Style Filter */}
+              <select
+                value={lineItemFilters.style}
+                onChange={(e) => setLineItemFilters({ ...lineItemFilters, style: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+              >
+                <option value="ALL">All Styles</option>
+                {availableFilters.styles.map(style => (
+                  <option key={style} value={style}>{style}</option>
+                ))}
+              </select>
+
               {/* Category Filter */}
               <select
                 value={lineItemFilters.category}
@@ -926,18 +938,6 @@ export function AdminPoDetail() {
                 <option value="">All Items</option>
                 {availableFilters.itemNames.map(itemName => (
                   <option key={itemName} value={itemName}>{itemName}</option>
-                ))}
-              </select>
-
-              {/* Style Filter */}
-              <select
-                value={lineItemFilters.style}
-                onChange={(e) => setLineItemFilters({ ...lineItemFilters, style: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
-              >
-                <option value="ALL">All Styles</option>
-                {availableFilters.styles.map(style => (
-                  <option key={style} value={style}>{style}</option>
                 ))}
               </select>
 
@@ -967,217 +967,221 @@ export function AdminPoDetail() {
           </div>
 
           {viewMode === 'list' ? (
-            <div className="overflow-x-auto overflow-scroll">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <TableHeader
-                      columnName="design_code"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('design_code')}
-                    >
-                      Design No
-                    </TableHeader>
-                    <TableHeader
-                      columnName="combination_code"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('combination_code')}
-                    >
-                      Combination ID
-                    </TableHeader>
-                    <TableHeader
-                      columnName="product_name"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('product_name')}
-                    >
-                      Item Name
-                    </TableHeader>
-                    <TableHeader
-                      columnName="style"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('style')}
-                    >
-                      Style
-                    </TableHeader>
-                    <TableHeader
-                      columnName="sub_style"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('sub_style')}
-                    >
-                      Sub-Style
-                    </TableHeader>
-                    <TableHeader
-                      columnName="color"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('color')}
-                    >
-                      Color
-                    </TableHeader>
-                    <TableHeader
-                      columnName="sub_color"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('sub_color')}
-                    >
-                      Sub-Color
-                    </TableHeader>
-                    <TableHeader
-                      columnName="polish"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('polish')}
-                    >
-                      Polish
-                    </TableHeader>
-                    <TableHeader
-                      columnName="size"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('size')}
-                    >
-                      Size
-                    </TableHeader>
-                    <TableHeader
-                      columnName="weight"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('weight')}
-                    >
-                      Weight
-                    </TableHeader>
-                    <TableHeader
-                      columnName="quantity"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('quantity')}
-                    >
-                      Order Qty
-                    </TableHeader>
-                    <TableHeader
-                      columnName="received_qty"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('received_qty')}
-                    >
-                      Delivered Qty
-                    </TableHeader>
-                    <TableHeader
-                      columnName="pending_qty"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('pending_qty')}
-                    >
-                      Pending Qty
-                    </TableHeader>
-                    <TableHeader
-                      columnName="price"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('price')}
-                    >
-                      Price
-                    </TableHeader>
-                    <TableHeader
-                      columnName="mrp"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('mrp')}
-                    >
-                      MRP
-                    </TableHeader>
-                    <TableHeader
-                      columnName="expected_delivery_date"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('expected_delivery_date')}
-                    >
-                      Expected Delivery Date
-                    </TableHeader>
-                    <TableHeader
-                      columnName="status"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('status')}
-                    >
-                      Status
-                    </TableHeader>
-                    <TableHeader
-                      columnName="priority"
-                      sortable={true}
-                      onSort={requestSort}
-                      sortDirection={getSortIcon('priority')}
-                    >
-                      Priority
-                    </TableHeader>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedLineItems.map(item => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <TableCell value={parseInt(item.design_code) || 0} columnName="design_code" />
-                      <TableCell
-                        value={item.combination_code || 0}
-                        columnName="combination_code"
-                        onClick={() => handleProductClick(item)}
-                      />
-                      <TableCell value={item.product_name} columnName="product_name" />
-                      <TableCell value={item.style} columnName="style" />
-                      <TableCell value={item.sub_style} columnName="sub_style" />
-                      <TableCell value={item.color} columnName="color" />
-                      <TableCell value={item.sub_color} columnName="sub_color" />
-                      <TableCell value={item.polish} columnName="polish" />
-                      <TableCell value={item.size} columnName="size" />
-                      <TableCell value={item.weight} columnName="weight" type="price" />
-                      <TableCell value={item.quantity} columnName="quantity" />
-                      <TableCell value={item.received_qty || 0} columnName="received_qty" />
-                      <TableCell value={(item.quantity || 0) - (item.received_qty || 0)} columnName="pending_qty" />
-                      <TableCell value={item.price} columnName="price" type="currency" />
-                      <TableCell value={item.mrp} columnName="mrp" type="currency" />
-                      <TableCell value={item.expected_delivery_date} columnName="expected_delivery_date" type="date" />
-                      <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${statusColors[item.status]}`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {editingLineItem === item.id ? (
-                          <select
-                            defaultValue={item.line_priority}
-                            onChange={(e) => handleUpdateLineItemPriority(item.id, e.target.value)}
-                            className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:border-gray-300"
-                            disabled={item.status === 'DELIVERED'}
-                          >
-                            {PRIORITIES.map(p => (
-                              <option key={p} value={p}>{p}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <div className="flex items-center space-x-1">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[item.line_priority]}`}>
-                              {item.line_priority}
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <div className="max-h-96 overflow-y-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                      <tr>
+                        <TableHeader
+                          columnName="design_code"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('design_code')}
+                        >
+                          Design No
+                        </TableHeader>
+                        <TableHeader
+                          columnName="combination_code"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('combination_code')}
+                        >
+                          Combination ID
+                        </TableHeader>
+                        <TableHeader
+                          columnName="product_name"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('product_name')}
+                        >
+                          Item Name
+                        </TableHeader>
+                        <TableHeader
+                          columnName="style"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('style')}
+                        >
+                          Style
+                        </TableHeader>
+                        <TableHeader
+                          columnName="sub_style"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('sub_style')}
+                        >
+                          Sub-Style
+                        </TableHeader>
+                        <TableHeader
+                          columnName="color"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('color')}
+                        >
+                          Color
+                        </TableHeader>
+                        <TableHeader
+                          columnName="sub_color"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('sub_color')}
+                        >
+                          Sub-Color
+                        </TableHeader>
+                        <TableHeader
+                          columnName="polish"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('polish')}
+                        >
+                          Polish
+                        </TableHeader>
+                        <TableHeader
+                          columnName="size"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('size')}
+                        >
+                          Size
+                        </TableHeader>
+                        <TableHeader
+                          columnName="weight"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('weight')}
+                        >
+                          Weight
+                        </TableHeader>
+                        <TableHeader
+                          columnName="quantity"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('quantity')}
+                        >
+                          Order Qty
+                        </TableHeader>
+                        <TableHeader
+                          columnName="received_qty"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('received_qty')}
+                        >
+                          Delivered Qty
+                        </TableHeader>
+                        <TableHeader
+                          columnName="pending_qty"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('pending_qty')}
+                        >
+                          Pending Qty
+                        </TableHeader>
+                        <TableHeader
+                          columnName="price"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('price')}
+                        >
+                          Price
+                        </TableHeader>
+                        <TableHeader
+                          columnName="mrp"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('mrp')}
+                        >
+                          MRP
+                        </TableHeader>
+                        <TableHeader
+                          columnName="expected_delivery_date"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('expected_delivery_date')}
+                        >
+                          Expected Delivery Date
+                        </TableHeader>
+                        <TableHeader
+                          columnName="status"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('status')}
+                        >
+                          Status
+                        </TableHeader>
+                        <TableHeader
+                          columnName="priority"
+                          sortable={true}
+                          onSort={requestSort}
+                          sortDirection={getSortIcon('priority')}
+                        >
+                          Priority
+                        </TableHeader>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedLineItems.map(item => (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                          <TableCell value={parseInt(item.design_code) || 0} columnName="design_code" />
+                          <TableCell
+                            value={item.combination_code || 0}
+                            columnName="combination_code"
+                            onClick={() => handleProductClick(item)}
+                          />
+                          <TableCell value={item.product_name} columnName="product_name" />
+                          <TableCell value={item.style} columnName="style" />
+                          <TableCell value={item.sub_style} columnName="sub_style" />
+                          <TableCell value={item.color} columnName="color" />
+                          <TableCell value={item.sub_color} columnName="sub_color" />
+                          <TableCell value={item.polish} columnName="polish" />
+                          <TableCell value={item.size} columnName="size" />
+                          <TableCell value={item.weight} columnName="weight" type="price" />
+                          <TableCell value={item.quantity} columnName="quantity" />
+                          <TableCell value={item.received_qty || 0} columnName="received_qty" />
+                          <TableCell value={(item.quantity || 0) - (item.received_qty || 0)} columnName="pending_qty" />
+                          <TableCell value={item.price} columnName="price" type="currency" />
+                          <TableCell value={item.mrp} columnName="mrp" type="currency" />
+                          <TableCell value={item.expected_delivery_date} columnName="expected_delivery_date" type="date" />
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${statusColors[item.status]}`}>
+                              {item.status}
                             </span>
-                            {item.status !== 'DELIVERED' && (
-                              <button
-                                onClick={() => setEditingLineItem(item.id)}
-                                className="text-xs text-blue-600 hover:text-blue-800"
-                                title="Edit priority for this line item only"
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {editingLineItem === item.id ? (
+                              <select
+                                defaultValue={item.line_priority}
+                                onChange={(e) => handleUpdateLineItemPriority(item.id, e.target.value)}
+                                className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:border-gray-300"
+                                disabled={item.status === 'DELIVERED'}
                               >
-                                Edit
-                              </button>
+                                {PRIORITIES.map(p => (
+                                  <option key={p} value={p}>{p}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <div className="flex items-center space-x-1">
+                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[item.line_priority]}`}>
+                                  {item.line_priority}
+                                </span>
+                                {item.status !== 'DELIVERED' && (
+                                  <button
+                                    onClick={() => setEditingLineItem(item.id)}
+                                    className="text-xs text-blue-600 hover:text-blue-800"
+                                    title="Edit priority for this line item only"
+                                  >
+                                    Edit
+                                  </button>
+                                )}
+                              </div>
                             )}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           ) : (
             /* Tiles View */
@@ -1215,10 +1219,9 @@ export function AdminPoDetail() {
                   }}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
                 >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
                   <option value={50}>50</option>
                   <option value={75}>75</option>
+                  <option value={100}>100</option>
                 </select>
               </div>
 

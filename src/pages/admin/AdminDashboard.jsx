@@ -32,7 +32,7 @@ export function AdminDashboard() {
   const [pos, setPos] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState(['Pending', 'Partially Delivered']);
@@ -360,7 +360,7 @@ export function AdminDashboard() {
                   </button>
 
                   {showStatusDropdown && (
-                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                       <div className="p-2">
                         <label className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                           <input
@@ -433,7 +433,7 @@ export function AdminDashboard() {
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300 w-48"
                 />
                 {showVendorDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     <div className="px-3 py-2 text-sm text-gray-500 border-b border-gray-200">
                       {vendorSearchTerm ? `Search results for "${vendorSearchTerm}"` : 'All Vendors'}
                     </div>
@@ -477,69 +477,71 @@ export function AdminDashboard() {
         ) : (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <TableHeader columnName="po_number">PO Number</TableHeader>
-                    <TableHeader columnName="po_date">PO Date</TableHeader>
-                    <TableHeader columnName="vendor">Vendor</TableHeader>
-                    <TableHeader columnName="type">Type</TableHeader>
-                    <TableHeader columnName="status">Status</TableHeader>
-                    <TableHeader columnName="vendor_status">Vendor Status</TableHeader>
-                    <TableHeader columnName="line_items">Line Items</TableHeader>
-                    <TableHeader columnName="actions">Actions</TableHeader>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {pos.length === 0 ? (
+              <div className="max-h-96 overflow-y-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                     <tr>
-                      <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
-                        No purchase orders found
-                      </td>
+                      <TableHeader columnName="po_number">PO Number</TableHeader>
+                      <TableHeader columnName="po_date">PO Date</TableHeader>
+                      <TableHeader columnName="vendor">Vendor</TableHeader>
+                      <TableHeader columnName="type">Type</TableHeader>
+                      <TableHeader columnName="status">Status</TableHeader>
+                      <TableHeader columnName="vendor_status">Vendor Status</TableHeader>
+                      <TableHeader columnName="line_items">Line Items</TableHeader>
+                      <TableHeader columnName="actions">Actions</TableHeader>
                     </tr>
-                  ) : (
-                    pos.map(po => {
-                      const overdue = isPoOverdue(po);
-                      return (
-                        <tr key={po.id} className={`transition-colors ${overdue ? 'bg-red-500 text-white' : 'hover:bg-gray-50'}`}>
-                          <TableCell value={po.po_number} columnName="po_number" />
-                          <TableCell value={po.po_date} columnName="po_date" type="date" />
-                          <TableCell value={po.vendor?.name || 'N/A'} columnName="vendor" />
-                          <TableCell value={po.type.replace('_', ' ')} columnName="type" />
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`text-sm font-medium rounded-full px-2 py-1 ${statusColors[po.status]}`}>
-                              {po.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`text-sm font-medium rounded-full px-2 py-1 ${po.vendor_status === 'acknowledged'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-400 text-white'
-                              }`}>
-                              {po.vendor_status === 'acknowledged' ? 'acknowledged' : 'not yet acknowledged'}
-                            </span>
-                          </td>
-                          <td className={`p-4 whitespace-nowrap text-sm ${overdue ? 'bg-red-500 text-white' : 'hover:bg-gray-50'}`}>
-                            {po.line_items_count}
-                          </td>
-                          <td className="p-4 whitespace-nowrap text-sm">
-                            <div className="flex items-center justify-center">
-                              <button
-                                onClick={() => navigate(`/admin/pos/${po.id}`)}
-                                className={`font-medium flex items-center space-x-1 ${overdue ? 'text-white' : 'text-blue-600 hover:text-blue-800'
-                                  }`}
-                              >
-                                <Eye className="w-4 h-4" />
-                                <span>View</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {pos.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
+                          No purchase orders found
+                        </td>
+                      </tr>
+                    ) : (
+                      pos.map(po => {
+                        const overdue = isPoOverdue(po);
+                        return (
+                          <tr key={po.id} className={`transition-colors ${overdue ? 'bg-red-500 text-white' : 'hover:bg-gray-50'}`}>
+                            <TableCell value={po.po_number} columnName="po_number" />
+                            <TableCell value={po.po_date} columnName="po_date" type="date" />
+                            <TableCell value={po.vendor?.name || 'N/A'} columnName="vendor" />
+                            <TableCell value={po.type.replace('_', ' ')} columnName="type" />
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`text-sm font-medium rounded-full px-2 py-1 ${statusColors[po.status]}`}>
+                                {po.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`text-sm font-medium rounded-full px-2 py-1 ${po.vendor_status === 'acknowledged'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-orange-400 text-white'
+                                }`}>
+                                {po.vendor_status === 'acknowledged' ? 'acknowledged' : 'not yet acknowledged'}
+                              </span>
+                            </td>
+                            <td className={`p-4 whitespace-nowrap text-sm ${overdue ? 'bg-red-500 text-white' : 'hover:bg-gray-50'}`}>
+                              {po.line_items_count}
+                            </td>
+                            <td className="p-4 whitespace-nowrap text-sm">
+                              <div className="flex items-center justify-center">
+                                <button
+                                  onClick={() => navigate(`/admin/pos/${po.id}`)}
+                                  className={`font-medium flex items-center space-x-1 ${overdue ? 'text-white' : 'text-blue-600 hover:text-blue-800'
+                                    }`}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                  <span>View</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -560,10 +562,9 @@ export function AdminDashboard() {
                   }}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
                 >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
                   <option value={50}>50</option>
                   <option value={75}>75</option>
+                  <option value={100}>100</option>
                 </select>
               </div>
 

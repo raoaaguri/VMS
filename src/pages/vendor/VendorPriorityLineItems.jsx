@@ -45,7 +45,7 @@ export function VendorPriorityLineItems() {
     categories: [],
   });
   const [lineItemPage, setLineItemPage] = useState(1);
-  const [lineItemPageSize, setLineItemPageSize] = useState(10); // Default to 10
+  const [lineItemPageSize, setLineItemPageSize] = useState(50); // Default to 50
   const [updatingItemId, setUpdatingItemId] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showProductPopup, setShowProductPopup] = useState(false);
@@ -551,7 +551,7 @@ export function VendorPriorityLineItems() {
                   </div>
                 </button>
                 {showStatusDropdown && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                  <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                     <div className="p-2">
                       {['Pending', 'Partially Delivered'].map(status => (
                         <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
@@ -573,80 +573,82 @@ export function VendorPriorityLineItems() {
                 <option value="last_3_months">Last 3 Months</option>
                 <option value="last_6_months">Last 6 Months</option>
               </select>
-              <select value={lineItemFilters.itemName} onChange={(e) => setLineItemFilters({ ...lineItemFilters, itemName: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 w-48">
-                <option value="">All Items</option>
-                {availableFilters.itemNames.map(itemName => <option key={itemName} value={itemName}>{itemName}</option>)}
-              </select>
               <select value={lineItemFilters.category} onChange={(e) => setLineItemFilters({ ...lineItemFilters, category: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300">
                 <option value="ALL">All Categories</option>
                 {availableFilters.categories.map(category => <option key={category} value={category}>{category}</option>)}
+              </select>
+              <select value={lineItemFilters.itemName} onChange={(e) => setLineItemFilters({ ...lineItemFilters, itemName: e.target.value })} className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 w-48">
+                <option value="">All Items</option>
+                {availableFilters.itemNames.map(itemName => <option key={itemName} value={itemName}>{itemName}</option>)}
               </select>
             </div>
             <button onClick={() => setLineItemFilters({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', month: 'ALL', itemName: '', category: 'ALL' })} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 
           {viewMode === 'list' ? (
-            <div className="overflow-x-auto overflow-scroll">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <TableHeader columnName="po_number">PO No</TableHeader>
-                    <TableHeader columnName="design_code">Design No</TableHeader>
-                    <TableHeader columnName="combination_code">Combination ID</TableHeader>
-                    <TableHeader columnName="product_name">Item Name</TableHeader>
-                    <TableHeader columnName="style">Style</TableHeader>
-                    <TableHeader columnName="sub_style">Sub-Style</TableHeader>
-                    <TableHeader columnName="color">Color</TableHeader>
-                    <TableHeader columnName="sub_color">Sub-Color</TableHeader>
-                    <TableHeader columnName="polish">Polish</TableHeader>
-                    <TableHeader columnName="size">Size</TableHeader>
-                    <TableHeader columnName="weight">Weight</TableHeader>
-                    <TableHeader columnName="quantity">Order Qty</TableHeader>
-                    <TableHeader columnName="received_qty">Delivered Qty</TableHeader>
-                    <TableHeader columnName="pending_qty">Pending Qty</TableHeader>
-                    <TableHeader columnName="price">Price</TableHeader>
-                    <TableHeader columnName="mrp">MRP</TableHeader>
-                    <TableHeader columnName="expected_delivery_date">Expected Date</TableHeader>
-                    <TableHeader columnName="status">Status</TableHeader>
-                    <TableHeader columnName="line_priority">Priority</TableHeader>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedLineItems.map(item => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <TableCell value={item.po_number} columnName="po_number" />
-                      <TableCell value={parseInt(item.design_code) || 0} columnName="design_code" />
-                      <TableCell value={item.combination_code || 0} columnName="combination_code" onClick={() => handleProductClick(item)} />
-                      <TableCell value={item.product_name} columnName="product_name" />
-                      <TableCell value={item.style} columnName="style" />
-                      <TableCell value={item.sub_style} columnName="sub_style" />
-                      <TableCell value={item.color} columnName="color" />
-                      <TableCell value={item.sub_color} columnName="sub_color" />
-                      <TableCell value={item.polish} columnName="polish" />
-                      <TableCell value={item.size} columnName="size" />
-                      <TableCell value={item.weight} columnName="weight" type="price" />
-                      <TableCell value={item.quantity} columnName="quantity" />
-                      <TableCell value={item.received_qty || 0} columnName="received_qty" />
-                      <TableCell value={(item.quantity || 0) - (item.received_qty || 0)} columnName="pending_qty" />
-                      <TableCell value={item.price} columnName="price" type="currency" />
-                      <TableCell value={item.mrp} columnName="mrp" type="currency" />
-                      <td className="px-4 py-3 text-sm">
-                        {formatDateForInput(item.expected_delivery_date)}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${statusColors[item.status]}`}>
-                          {item.status.charAt(0) + item.status.slice(1).toLowerCase()}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[item.line_priority]}`}>
-                          {item.line_priority}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <div className="max-h-96 overflow-y-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                      <tr>
+                        <TableHeader columnName="po_number">PO No</TableHeader>
+                        <TableHeader columnName="design_code">Design No</TableHeader>
+                        <TableHeader columnName="combination_code">Combination ID</TableHeader>
+                        <TableHeader columnName="product_name">Item Name</TableHeader>
+                        <TableHeader columnName="style">Style</TableHeader>
+                        <TableHeader columnName="sub_style">Sub-Style</TableHeader>
+                        <TableHeader columnName="color">Color</TableHeader>
+                        <TableHeader columnName="sub_color">Sub-Color</TableHeader>
+                        <TableHeader columnName="polish">Polish</TableHeader>
+                        <TableHeader columnName="size">Size</TableHeader>
+                        <TableHeader columnName="weight">Weight</TableHeader>
+                        <TableHeader columnName="quantity">Order Qty</TableHeader>
+                        <TableHeader columnName="received_qty">Delivered Qty</TableHeader>
+                        <TableHeader columnName="pending_qty">Pending Qty</TableHeader>
+                        <TableHeader columnName="price">Price</TableHeader>
+                        <TableHeader columnName="expected_delivery_date">Expected delivery Date</TableHeader>
+                        <TableHeader columnName="status">Status</TableHeader>
+                        <TableHeader columnName="line_priority">Priority</TableHeader>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedLineItems.map(item => (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                          <TableCell value={item.po_number} columnName="po_number" />
+                          <TableCell value={parseInt(item.design_code) || 0} columnName="design_code" />
+                          <TableCell value={item.combination_code || 0} columnName="combination_code" onClick={() => handleProductClick(item)} />
+                          <TableCell value={item.product_name} columnName="product_name" />
+                          <TableCell value={item.style} columnName="style" />
+                          <TableCell value={item.sub_style} columnName="sub_style" />
+                          <TableCell value={item.color} columnName="color" />
+                          <TableCell value={item.sub_color} columnName="sub_color" />
+                          <TableCell value={item.polish} columnName="polish" />
+                          <TableCell value={item.size} columnName="size" />
+                          <TableCell value={item.weight} columnName="weight" type="price" />
+                          <TableCell value={item.quantity} columnName="quantity" />
+                          <TableCell value={item.received_qty || 0} columnName="received_qty" />
+                          <TableCell value={(item.quantity || 0) - (item.received_qty || 0)} columnName="pending_qty" />
+                          <TableCell value={item.price} columnName="price" type="currency" />
+                          <td className="px-4 py-3 text-sm">
+                            {formatDateForInput(item.expected_delivery_date)}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${statusColors[item.status]}`}>
+                              {item.status.charAt(0) + item.status.slice(1).toLowerCase()}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[item.line_priority]}`}>
+                              {item.line_priority}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -667,9 +669,8 @@ export function VendorPriorityLineItems() {
                   }}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300 text-sm"
                 >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
                   <option value={50}>50</option>
+                  <option value={75}>75</option>
                   <option value={100}>100</option>
                 </select>
               </div>

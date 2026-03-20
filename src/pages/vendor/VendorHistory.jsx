@@ -9,7 +9,7 @@ export function VendorHistory() {
   const [historyData, setHistoryData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
   const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState({
     level: 'ALL',
@@ -124,66 +124,70 @@ export function VendorHistory() {
               No history records found
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date/Time
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      PO Number
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Level
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Field
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Old Value
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      New Value
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Changed By
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {historyData.map((entry, idx) => (
-                    <tr
-                      key={idx}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(`/vendor/pos/${entry.po_id}`)}
-                    >
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(entry.changed_at).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600">
-                        {entry.po_number}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${entry.level === 'PO'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-purple-100 text-purple-800'
-                            }`}
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <div className="max-h-96 overflow-y-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date/Time
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          PO Number
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Level
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Field
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Old Value
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          New Value
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Changed By
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {historyData.map((entry, idx) => (
+                        <tr
+                          key={idx}
+                          className="hover:bg-gray-50 cursor-pointer"
+                          onClick={() => navigate(`/vendor/pos/${entry.po_id}`)}
                         >
-                          {entry.level}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{entry.field_name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{entry.old_value || '-'}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{entry.new_value || '-'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {entry.changed_by_name} ({entry.changed_by_role})
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(entry.changed_at).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600">
+                            {entry.po_number}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm">
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${entry.level === 'PO'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-purple-100 text-purple-800'
+                                }`}
+                            >
+                              {entry.level}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">{entry.field_name}</td>
+                          <td className="px-4 py-3 text-sm text-gray-500">{entry.old_value || '-'}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{entry.new_value || '-'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                            {entry.changed_by_name} ({entry.changed_by_role})
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
@@ -203,10 +207,9 @@ export function VendorHistory() {
                     }}
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
                   >
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
                     <option value={50}>50</option>
                     <option value={75}>75</option>
+                    <option value={100}>100</option>
                   </select>
                 </div>
 
