@@ -44,6 +44,17 @@ export function VendorDashboard() {
     setPage(1);
   }, [statusFilter, priorityFilter, typeFilter, pageSize]);
 
+  // Listen for dashboard refresh events from other components
+  useEffect(() => {
+    const handleDashboardRefresh = () => {
+      loadStats();
+      loadPos();
+    };
+
+    window.addEventListener('dashboard-refresh', handleDashboardRefresh);
+    return () => window.removeEventListener('dashboard-refresh', handleDashboardRefresh);
+  }, []);
+
   useEffect(() => {
     // Extract types from the loaded PO data
     if (pos.length > 0) {

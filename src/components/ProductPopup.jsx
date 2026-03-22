@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, Package, DollarSign, Calendar, User } from 'lucide-react';
+import { formatDate } from '../utils/formatters';
 
 /**
  * Product details popup component
@@ -128,11 +129,7 @@ export function ProductPopup({
                       Expected Delivery:
                     </span>
                     <span className="text-sm font-medium text-gray-900">
-                      {new Date(product.expected_delivery_date).toLocaleDateString('en-GB', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                      })}
+                      {formatDate(product.expected_delivery_date)}
                     </span>
                   </div>
                 )}

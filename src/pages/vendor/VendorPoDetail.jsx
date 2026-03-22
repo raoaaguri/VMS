@@ -63,6 +63,16 @@ export function VendorPoDetail() {
     loadPo();
   }, [id]);
 
+  // Listen for dashboard refresh events from other components
+  useEffect(() => {
+    const handleDashboardRefresh = () => {
+      loadPo();
+    };
+
+    window.addEventListener('dashboard-refresh', handleDashboardRefresh);
+    return () => window.removeEventListener('dashboard-refresh', handleDashboardRefresh);
+  }, []);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {

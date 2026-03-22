@@ -303,8 +303,16 @@ export function VendorPriorityLineItems() {
       setIsProcessing(true);
       setUpdatingItemId(lineItemId);
 
+      // Find the line item to get its actual po_id
+      const lineItem = po?.line_items?.find(item => item.id === lineItemId);
+      const actualPoId = lineItem?.po_id;
+
+      if (!actualPoId) {
+        throw new Error('Unable to determine PO ID for line item');
+      }
+
       await api.vendor.updateLineItemExpectedDate(
-        poId,
+        actualPoId,
         lineItemId,
         date
       );
@@ -317,6 +325,12 @@ export function VendorPriorityLineItems() {
       }));
 
       showSuccess('Expected delivery date updated successfully!');
+
+      // Refresh dashboard data to reflect changes
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('dashboard-refresh'));
+      }, 1000);
+
     } catch (err) {
       showError(err.message);
     } finally {

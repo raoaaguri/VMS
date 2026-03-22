@@ -294,6 +294,7 @@ export function VendorManagement() {
                       <input
                         type="text"
                         name="name"
+                        placeholder="Enter vendor name"
                         required
                         defaultValue={editingVendor?.name}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -308,6 +309,7 @@ export function VendorManagement() {
                         type="text"
                         name="code"
                         required
+                        placeholder="Enter vendor code"
                         defaultValue={editingVendor?.code}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
@@ -323,6 +325,7 @@ export function VendorManagement() {
                         type="text"
                         name="contact_person"
                         required
+                        placeholder="Enter contact person"
                         defaultValue={editingVendor?.contact_person}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
@@ -337,6 +340,8 @@ export function VendorManagement() {
                         name="contact_email"
                         required
                         defaultValue={editingVendor?.contact_email}
+                        autoComplete="off"
+                        placeholder="Enter contact email"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
@@ -350,6 +355,7 @@ export function VendorManagement() {
                       <input
                         type="text"
                         name="contact_phone"
+                        placeholder="Enter contact phone"
                         defaultValue={editingVendor?.contact_phone}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
@@ -362,6 +368,7 @@ export function VendorManagement() {
                       <input
                         type="text"
                         name="gst_number"
+                        placeholder="Enter GST number"
                         defaultValue={editingVendor?.gst_number}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
@@ -374,6 +381,7 @@ export function VendorManagement() {
                     </label>
                     <textarea
                       name="address"
+                      placeholder="Enter vendor's address"
                       rows="3"
                       defaultValue={editingVendor?.address}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -403,7 +411,8 @@ export function VendorManagement() {
                         type="password"
                         name="password"
                         required={!editingVendor}
-                        placeholder="Enter password for the vendor user account"
+                        placeholder="Enter temporary password"
+                        autoComplete="new-password"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
@@ -468,6 +477,8 @@ export function VendorManagement() {
                       type="email"
                       name="email"
                       required
+                      autoComplete="off"
+                      placeholder="Enter vendor user's email address"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -480,6 +491,7 @@ export function VendorManagement() {
                       type="password"
                       name="password"
                       placeholder="Enter new password"
+                      autoComplete="new-password"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                   </div>

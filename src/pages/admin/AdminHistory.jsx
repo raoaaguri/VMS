@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { History, Filter, Search } from 'lucide-react';
 import { Layout } from '../../components/Layout';
 import { api } from '../../config/api';
+import { formatDate } from '../../utils/formatters';
 
 export function AdminHistory() {
   const navigate = useNavigate();
@@ -164,7 +165,7 @@ export function AdminHistory() {
                           onClick={() => navigate(`/admin/pos/${entry.po_id}`)}
                         >
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(entry.changed_at).toLocaleString()}
+                            {formatDate(entry.changed_at)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600">
                             {entry.po_number}
