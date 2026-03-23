@@ -10,7 +10,21 @@ import {
 
 import { query, transaction } from "../../config/db.js";
 
-const EXTERNAL_PORTAL_BASE_URL = "https://ditos2.technoboost.in";
+// Dynamic domain-based external portal URL
+const getExternalPortalBaseUrl = () => {
+  // Check if we're in a browser environment first
+  if (typeof window !== "undefined") {
+    return window.location.hostname === "vms.technoboost.in"
+      ? "https://ditos.technoboost.in"
+      : "https://ditos2.technoboost.in";
+  }
+
+  // For Node.js environment, use environment variable or default
+  const domain = process.env.EXTERNAL_DOMAIN || "ditos2.technoboost.in";
+  return `https://${domain}`;
+};
+
+const EXTERNAL_PORTAL_BASE_URL = getExternalPortalBaseUrl();
 
 const DELIVERY_DATE_TOKEN =
   "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.-HW681gJT1xI_2L8j0hb_yXjuNGUv4PRXOc39Vt3vbA";
