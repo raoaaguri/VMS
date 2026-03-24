@@ -8,8 +8,9 @@ import { ProductPopup } from '../../components/ProductPopup';
 import { formatDate, formatDateForInput, formatPrice, formatCurrency } from '../../utils/formatters';
 import { api } from '../../config/api';
 import { ArrowLeft, Package, Building, CheckCircle, Calendar, History, X, Filter, Download, ChevronDown, List, LayoutGrid } from 'lucide-react';
-import { useSortableTable } from '../../hooks/useSortableTable';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { useSortableTable } from '../../hooks/useSortableTable';
 
 const STATUSES = ['Pending', 'Partially Delivered', 'Fully Delivered', 'Closed', 'Cancelled'];
 
@@ -212,97 +213,161 @@ export function VendorPoDetail() {
     showSuccess('PO data exported successfully!');
   };
 
-  const exportWithImage = () => {
+  const exportWithImage = async () => {
     if (!po) return;
 
-    // Group and sort by design code
-    const groupedItems = {};
-    const sortedItems = [...filteredLineItems].sort((a, b) => {
-      const designA = parseInt(a.design_code) || 0;
-      const designB = parseInt(b.design_code) || 0;
-      return designA - designB;
-    });
+    try {
+      // Show loading state
+      setIsProcessing(true);
 
-    sortedItems.forEach(item => {
-      const designCode = item.design_code || 'Unknown';
-      if (!groupedItems[designCode]) {
-        groupedItems[designCode] = [];
-      }
-      groupedItems[designCode].push(item);
-    });
-
-    const designCodes = Object.keys(groupedItems);
-    const workbookData = [];
-
-    // Process each section individually with gaps
-    designCodes.forEach((designCode, index) => {
-      const items = groupedItems[designCode];
-
-      // Headers for this section
-      const headers = ['Product Name', 'Image', 'D.No', 'COLOR', 'POLISH', 'STYLE', 'SIZE', 'DMY7', 'DMY8', 'Qty'];
-
-      // Add headers row
-      workbookData.push(headers);
-
-      // Add data rows for this section
-      items.forEach((item) => {
-        // Debug logging
-        console.log('Item data:', {
-          combination_code: item.combination_code,
-          product_name: item.product_name,
-          design_code: item.design_code
-        });
-
-        const imageUrl = item.combination_code
-          ? `https://kushals-hq-prod.s3.amazonaws.com/images/${item.combination_code}.jpg`
-          : '';
-
-        console.log('Generated image URL:', imageUrl);
-
-        const row = [
-          item.product_name || '', // Product Name
-          imageUrl, // Image
-          item.design_code || '', // D.No
-          item.color || '', // COLOR
-          item.polish || '', // POLISH
-          item.style || '', // STYLE
-          item.size || '', // SIZE
-          'N/A', // DMY7
-          'N/A', // DMY8
-          item.quantity || 0 // Qty
-        ];
-
-        console.log('Excel row:', row);
-        workbookData.push(row);
+      // Group and sort by design code
+      const groupedItems = {};
+      const sortedItems = [...filteredLineItems].sort((a, b) => {
+        const designA = parseInt(a.design_code) || 0;
+        const designB = parseInt(b.design_code) || 0;
+        return designA - designB;
       });
 
-      // Add 2 blank rows between sections (except last)
-      if (index < designCodes.length - 1) {
-        workbookData.push(Array(10).fill('')); // First blank row
-        workbookData.push(Array(10).fill('')); // Second blank row
+      sortedItems.forEach(item => {
+        const designCode = item.design_code || 'Unknown';
+        if (!groupedItems[designCode]) {
+          groupedItems[designCode] = [];
+        }
+        groupedItems[designCode].push(item);
+      });
+
+      const designCodes = Object.keys(groupedItems);
+
+      // Create ExcelJS workbook
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("PO Data");
+
+      // Set column widths
+      worksheet.columns = [
+        { width: 20 }, // Product Name
+        { width: 20 }, // Image (increased)
+        { width: 12 }, // C.ID
+        { width: 8 },  // D.No
+        { width: 10 }, // COLOR
+        { width: 10 }, // POLISH
+        { width: 10 }, // STYLE
+        { width: 8 },  // SIZE
+        { width: 8 },  // DMY7
+        { width: 8 },  // DMY8
+        { width: 8 }   // Qty
+      ];
+
+      let currentRow = 1;
+
+      // Process each design group
+      for (let groupIndex = 0; groupIndex < designCodes.length; groupIndex++) {
+        const designCode = designCodes[groupIndex];
+        const items = groupedItems[designCode];
+
+        // Add headers for this section
+        const headers = ['Product Name', 'Image', 'C.ID', 'D.No', 'COLOR', 'POLISH', 'STYLE', 'SIZE', 'DMY7', 'DMY8', 'Qty'];
+        worksheet.addRow(headers);
+        currentRow++;
+
+        // Style headers
+        const headerRow = worksheet.getRow(currentRow);
+        headerRow.font = { bold: true };
+        headerRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE6E6FA' }
+        };
+
+        // Process items for this group
+        for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+          const item = items[itemIndex];
+          const isFirstRow = itemIndex === 0;
+
+          // Generate image URL only for first row
+          const imageUrl = isFirstRow && item.combination_code
+            ? `https://kushals-hq-prod.s3.amazonaws.com/images/${item.combination_code}.jpg`
+            : '';
+
+          // Add data row
+          const rowData = [
+            item.product_name || '', // Product Name
+            '', // Image (will be added separately)
+            item.combination_code || '', // C.ID
+            isFirstRow ? (item.design_code || '') : '', // D.No
+            item.color || '', // COLOR
+            item.polish || '', // POLISH
+            item.style || '', // STYLE
+            item.size || '', // SIZE
+            'N/A', // DMY7
+            'N/A', // DMY8
+            item.quantity || 0 // Qty
+          ];
+
+          const row = worksheet.addRow(rowData);
+          currentRow++;
+
+          // Add image for first row of group
+          if (isFirstRow && imageUrl) {
+            try {
+              const response = await fetch(imageUrl);
+              const imageBuffer = await response.arrayBuffer();
+              const imageId = workbook.addImage({
+                buffer: imageBuffer,
+                extension: 'jpeg'
+              });
+
+              // Add image to cell B (column 2)
+              worksheet.addImage(imageId, {
+                tl: { col: 1, row: currentRow - 1 },
+                ext: { width: 120, height: 120 }
+              });
+
+              // Set row height for image
+              row.height = 90;
+            } catch (imgError) {
+              console.log('Failed to load image:', imageUrl, imgError);
+            }
+          }
+        }
+
+        // Add blank rows between sections (except last)
+        if (groupIndex < designCodes.length - 1) {
+          worksheet.addRow([]);
+          worksheet.addRow([]);
+          currentRow += 2;
+        }
       }
-    });
 
-    // Create Excel workbook
-    const worksheet = XLSX.utils.json_to_sheet(workbookData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "PO Data");
+      // Generate and download file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-    // Generate and download file
-    const excelBuffer = XLSX.write(workbook, { type: 'buffer' });
-    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      // Create download link with proper handling
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.download = `PO_${po.po_number}_with_images.xlsx`;
+      link.style.display = 'none';
 
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `PO_${po.po_number}_with_images.xlsx`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // Add to DOM, trigger click, then cleanup
+      document.body.appendChild(link);
 
-    setShowExportDropdown(false);
-    showSuccess('PO data with images exported successfully!');
+      // Small delay to ensure blob is ready
+      setTimeout(() => {
+        link.click();
+        URL.revokeObjectURL(url);
+        document.body.removeChild(link);
+
+        setShowExportDropdown(false);
+        showSuccess('PO data with images exported successfully!');
+      }, 100);
+    } catch (error) {
+      console.error('Export error:', error);
+      showError('Failed to export data with images');
+    } finally {
+      // Always remove loading state
+      setIsProcessing(false);
+    }
   };
 
   // Calculate date range for month filters
@@ -723,7 +788,7 @@ export function VendorPoDetail() {
                 <div className='flex items-center gap-x-3'>
                   <label className="text-sm text-gray-500">Priority :</label>
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[po.priority]}`}>
-                    {po.priority}
+                    {po.priority == '' ? '-' : po.priority}
                   </span>
                 </div>
 
@@ -733,6 +798,7 @@ export function VendorPoDetail() {
                     <div className="flex items-center space-x-2">
                       <input
                         type="date"
+                        format="dd/MM/yyyy"
                         value={tempPoExpectedDate}
                         onChange={(e) => setTempPoExpectedDate(e.target.value)}
                         className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-300"
@@ -827,6 +893,7 @@ export function VendorPoDetail() {
               <div className="flex items-center space-x-3">
                 <input
                   type="date"
+                  format="dd/MM/yyyy"
                   placeholder="Set common date for all items"
                   onChange={(e) => {
                     if (e.target.value) {
@@ -1203,7 +1270,7 @@ export function VendorPoDetail() {
                           </td>
                           <td className="px-4 py-3 text-sm">
                             <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[item.line_priority]}`}>
-                              {item.line_priority}
+                              {item.line_priority == '' ? '-' : item.line_priority}
                             </span>
                           </td>
                         </tr>

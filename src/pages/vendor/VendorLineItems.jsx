@@ -241,9 +241,6 @@ export function VendorLineItems() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="ALL">All Priorities</option>
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
                   <option value="URGENT">Urgent</option>
                 </select>
               </div>
@@ -378,7 +375,7 @@ export function VendorLineItems() {
                           <TableCell value={item.received_qty || 0} columnName="received_qty" />
                           <td className="px-4 py-3 whitespace-nowrap text-sm">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(item.line_priority)}`}>
-                              {item.line_priority}
+                              {item.line_priority == '' ? '-' : item.line_priority}
                             </span>
                           </td>
                           <TableCell value={item.expected_delivery_date} columnName="expected_delivery_date" type="date" />

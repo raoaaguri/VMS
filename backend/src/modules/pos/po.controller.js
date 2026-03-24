@@ -352,8 +352,8 @@ export async function updatePoPriorityBatch(req, res, next) {
   try {
     const { po_id, line_items_id, priority } = req.body;
 
-    if (!po_id || !priority) {
-      throw new BadRequestError("po_id and priority are required");
+    if (!po_id) {
+      throw new BadRequestError("po_id is required");
     }
 
     const result = await poService.updatePoPriorityBatch(

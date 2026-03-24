@@ -10,8 +10,9 @@ import { api } from '../../config/api';
 import { ArrowLeft, Package, Building, Calendar, AlertCircle, History, X, Filter, Download, ChevronDown, List, LayoutGrid } from 'lucide-react';
 import { useSortableTable } from '../../hooks/useSortableTable';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
-const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+const PRIORITIES = ['URGENT'];
 
 const priorityColors = {
   LOW: 'bg-gray-100 text-gray-800',
@@ -38,7 +39,6 @@ export function AdminPoDetail() {
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
-  const [editingPoPriority, setEditingPoPriority] = useState(false);
   const [editingLineItem, setEditingLineItem] = useState(null);
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -208,97 +208,161 @@ export function AdminPoDetail() {
     showSuccess('PO data exported successfully!');
   };
 
-  const exportWithImage = () => {
+  const exportWithImage = async () => {
     if (!po) return;
 
-    // Group and sort by design code
-    const groupedItems = {};
-    const sortedItems = [...filteredLineItems].sort((a, b) => {
-      const designA = parseInt(a.design_code) || 0;
-      const designB = parseInt(b.design_code) || 0;
-      return designA - designB;
-    });
+    try {
+      // Show loading state
+      setIsProcessing(true);
 
-    sortedItems.forEach(item => {
-      const designCode = item.design_code || 'Unknown';
-      if (!groupedItems[designCode]) {
-        groupedItems[designCode] = [];
-      }
-      groupedItems[designCode].push(item);
-    });
-
-    const designCodes = Object.keys(groupedItems);
-    const workbookData = [];
-
-    // Process each section individually with gaps
-    designCodes.forEach((designCode, index) => {
-      const items = groupedItems[designCode];
-
-      // Headers for this section
-      const headers = ['Product Name', 'Image', 'D.No', 'COLOR', 'POLISH', 'STYLE', 'SIZE', 'DMY7', 'DMY8', 'Qty'];
-
-      // Add headers row
-      workbookData.push(headers);
-
-      // Add data rows for this section
-      items.forEach((item) => {
-        // Debug logging
-        console.log('Item data:', {
-          combination_code: item.combination_code,
-          product_name: item.product_name,
-          design_code: item.design_code
-        });
-
-        const imageUrl = item.combination_code
-          ? `https://kushals-hq-prod.s3.amazonaws.com/images/${item.combination_code}.jpg`
-          : '';
-
-        console.log('Generated image URL:', imageUrl);
-
-        const row = [
-          item.product_name || '', // Product Name
-          imageUrl, // Image
-          item.design_code || '', // D.No
-          item.color || '', // COLOR
-          item.polish || '', // POLISH
-          item.style || '', // STYLE
-          item.size || '', // SIZE
-          'N/A', // DMY7
-          'N/A', // DMY8
-          item.quantity || 0 // Qty
-        ];
-
-        console.log('Excel row:', row);
-        workbookData.push(row);
+      // Group and sort by design code
+      const groupedItems = {};
+      const sortedItems = [...filteredLineItems].sort((a, b) => {
+        const designA = parseInt(a.design_code) || 0;
+        const designB = parseInt(b.design_code) || 0;
+        return designA - designB;
       });
 
-      // Add 2 blank rows between sections (except last)
-      if (index < designCodes.length - 1) {
-        workbookData.push(Array(10).fill('')); // First blank row
-        workbookData.push(Array(10).fill('')); // Second blank row
+      sortedItems.forEach(item => {
+        const designCode = item.design_code || 'Unknown';
+        if (!groupedItems[designCode]) {
+          groupedItems[designCode] = [];
+        }
+        groupedItems[designCode].push(item);
+      });
+
+      const designCodes = Object.keys(groupedItems);
+
+      // Create ExcelJS workbook
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("PO Data");
+
+      // Set column widths
+      worksheet.columns = [
+        { width: 20 }, // Product Name
+        { width: 20 }, // Image (increased)
+        { width: 12 }, // C.ID
+        { width: 8 },  // D.No
+        { width: 10 }, // COLOR
+        { width: 10 }, // POLISH
+        { width: 10 }, // STYLE
+        { width: 8 },  // SIZE
+        { width: 8 },  // DMY7
+        { width: 8 },  // DMY8
+        { width: 8 }   // Qty
+      ];
+
+      let currentRow = 1;
+
+      // Process each design group
+      for (let groupIndex = 0; groupIndex < designCodes.length; groupIndex++) {
+        const designCode = designCodes[groupIndex];
+        const items = groupedItems[designCode];
+
+        // Add headers for this section
+        const headers = ['Product Name', 'Image', 'C.ID', 'D.No', 'COLOR', 'POLISH', 'STYLE', 'SIZE', 'DMY7', 'DMY8', 'Qty'];
+        worksheet.addRow(headers);
+        currentRow++;
+
+        // Style headers
+        const headerRow = worksheet.getRow(currentRow);
+        headerRow.font = { bold: true };
+        headerRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE6E6FA' }
+        };
+
+        // Process items for this group
+        for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+          const item = items[itemIndex];
+          const isFirstRow = itemIndex === 0;
+
+          // Generate image URL only for first row
+          const imageUrl = isFirstRow && item.combination_code
+            ? `https://kushals-hq-prod.s3.amazonaws.com/images/${item.combination_code}.jpg`
+            : '';
+
+          // Add data row
+          const rowData = [
+            item.product_name || '', // Product Name
+            '', // Image (will be added separately)
+            item.combination_code || '', // C.ID
+            isFirstRow ? (item.design_code || '') : '', // D.No
+            item.color || '', // COLOR
+            item.polish || '', // POLISH
+            item.style || '', // STYLE
+            item.size || '', // SIZE
+            'N/A', // DMY7
+            'N/A', // DMY8
+            item.quantity || 0 // Qty
+          ];
+
+          const row = worksheet.addRow(rowData);
+          currentRow++;
+
+          // Add image for first row of group
+          if (isFirstRow && imageUrl) {
+            try {
+              const response = await fetch(imageUrl);
+              const imageBuffer = await response.arrayBuffer();
+              const imageId = workbook.addImage({
+                buffer: imageBuffer,
+                extension: 'jpeg'
+              });
+
+              // Add image to cell B (column 2)
+              worksheet.addImage(imageId, {
+                tl: { col: 1, row: currentRow - 1 },
+                ext: { width: 120, height: 120 }
+              });
+
+              // Set row height for image
+              row.height = 90;
+            } catch (imgError) {
+              console.log('Failed to load image:', imageUrl, imgError);
+            }
+          }
+        }
+
+        // Add blank rows between sections (except last)
+        if (groupIndex < designCodes.length - 1) {
+          worksheet.addRow([]);
+          worksheet.addRow([]);
+          currentRow += 2;
+        }
       }
-    });
 
-    // Create Excel workbook
-    const worksheet = XLSX.utils.json_to_sheet(workbookData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "PO Data");
+      // Generate and download file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-    // Generate and download file
-    const excelBuffer = XLSX.write(workbook, { type: 'buffer' });
-    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      // Create download link with proper handling
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.download = `PO_${po.po_number}_with_images.xlsx`;
+      link.style.display = 'none';
 
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `PO_${po.po_number}_with_images.xlsx`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // Add to DOM, trigger click, then cleanup
+      document.body.appendChild(link);
 
-    setShowExportDropdown(false);
-    showSuccess('PO data with images exported successfully!');
+      // Small delay to ensure blob is ready
+      setTimeout(() => {
+        link.click();
+        URL.revokeObjectURL(url);
+        document.body.removeChild(link);
+
+        setShowExportDropdown(false);
+        showSuccess('PO data with images exported successfully!');
+      }, 100);
+    } catch (error) {
+      console.error('Export error:', error);
+      showError('Failed to export data with images');
+    } finally {
+      // Always remove loading state
+      setIsProcessing(false);
+    }
   };
 
   // Calculate date range for month filters
@@ -384,7 +448,6 @@ export function AdminPoDetail() {
       // Reload PO data to get updated status from server
       const updatedPo = await api.admin.getPoById(id);
       setPo(updatedPo);
-      setEditingPoPriority(false);
       showSuccess(
         "PO and all line items priority updated successfully!",
       );
@@ -652,43 +715,22 @@ export function AdminPoDetail() {
 
                 <div className='flex items-center gap-x-3'>
                   <label className="text-sm text-gray-500 block mb-2">Priority :</label>
-                  {editingPoPriority ? (
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <select
-                          defaultValue={po.priority}
-                          onChange={(e) => handleUpdatePoPriority(e.target.value)}
-                          className="px-3 py-1 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
-                          disabled={po.status === 'DELIVERED'}
-                        >
-                          {PRIORITIES.map(p => (
-                            <option key={p} value={p}>{p}</option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => setEditingPoPriority(false)}
-                          className="px-3 py-1 text-sm font-medium rounded-full bg-red-500 text-white hover:bg-red-600"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">Note: This will update all line items priority</p>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[po.priority]}`}>
-                        {po.priority}
+                  <div className="flex items-center space-x-2">
+                    <select
+                      value={po.priority || ""}
+                      onChange={(e) => handleUpdatePoPriority(e.target.value)}
+                      className="px-3 py-1 border border-gray-300 rounded-lg focus:outline-none focus:border-gray-300"
+                      disabled={po.status === 'DELIVERED'}
+                    >
+                      <option value="">select an option</option>
+                      <option value="URGENT">URGENT</option>
+                    </select>
+                    {po.status !== 'DELIVERED' && (
+                      <span className="text-xs text-gray-500">
+                        {po.priority ? "" : "-"}
                       </span>
-                      {po.status !== 'DELIVERED' && (
-                        <button
-                          onClick={() => setEditingPoPriority(true)}
-                          className="text-sm text-blue-600 hover:text-blue-800"
-                        >
-                          Edit
-                        </button>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -886,9 +928,9 @@ export function AdminPoDetail() {
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
               >
                 <option value="ALL">All Priorities</option>
-                <option value="LOW">Low</option>
+                {/* <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
+                <option value="HIGH">High</option> */}
                 <option value="URGENT">Urgent</option>
               </select>
 
@@ -1150,25 +1192,23 @@ export function AdminPoDetail() {
                           <td className="px-4 py-3 text-sm">
                             {editingLineItem === item.id ? (
                               <select
-                                defaultValue={item.line_priority}
+                                value={item.line_priority || ""}
                                 onChange={(e) => handleUpdateLineItemPriority(item.id, e.target.value)}
                                 className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:border-gray-300"
                                 disabled={item.status === 'DELIVERED'}
                               >
-                                {PRIORITIES.map(p => (
-                                  <option key={p} value={p}>{p}</option>
-                                ))}
+                                <option value="">select an option</option>
+                                <option value="URGENT">URGENT</option>
                               </select>
                             ) : (
                               <div className="flex items-center space-x-1">
                                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[item.line_priority]}`}>
-                                  {item.line_priority}
+                                  {item.line_priority ? item.line_priority : "-"}
                                 </span>
                                 {item.status !== 'DELIVERED' && (
                                   <button
                                     onClick={() => setEditingLineItem(item.id)}
                                     className="text-xs text-blue-600 hover:text-blue-800"
-                                    title="Edit priority for this line item only"
                                   >
                                     Edit
                                   </button>

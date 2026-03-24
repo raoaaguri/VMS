@@ -181,8 +181,9 @@ export function VendorDashboard() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">On-Time (This Month)</p>
-                  <p className="text-3xl font-bold text-green-600 mt-2">{stats.on_time_line_item_count_this_month}</p>
+                  <p className=" font-medium text-gray-600 pb-3">Completed (This Month)</p>
+                  <p className="text-sm text-gray-600">Completed on-time : {stats.completed_on_time_pos}</p>
+                  <p className="text-sm text-gray-600">Completed delayed : {stats.completed_delayed_pos}</p>
                 </div>
                 <div className="bg-green-100 rounded-full p-3">
                   <CheckCircle className="w-6 h-6 text-green-600" />
@@ -193,8 +194,9 @@ export function VendorDashboard() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Delayed (This Month)</p>
-                  <p className="text-3xl font-bold text-red-600 mt-2">{stats.delayed_line_item_count_this_month}</p>
+                  <p className=" font-medium text-gray-600 pb-3">Pending (This Month)</p>
+                  <p className="text-sm text-gray-600">Pending above 60 days : {stats.pending_above_60_days_pos}</p>
+                  <p className="text-sm text-gray-600">Pending below 60 days : {stats.pending_below_60_days_pos}</p>
                 </div>
                 <div className="bg-red-100 rounded-full p-3">
                   <AlertCircle className="w-6 h-6 text-red-600" />
@@ -205,7 +207,7 @@ export function VendorDashboard() {
             <div className="bg-white rounded-lg shadow p-6">
               <h4 className="text-sm font-medium text-gray-600 mb-3">Open PO Line Items by Priority</h4>
               <div className="grid grid-cols-2 gap-x-10">
-                <div className="flex justify-between items-center">
+                {/* <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Low:</span>
                   <button
                     onClick={() => navigate(`/vendor/priority/LOW`)}
@@ -231,7 +233,7 @@ export function VendorDashboard() {
                   >
                     {stats.open_pos_by_priority.HIGH}
                   </button>
-                </div>
+                </div> */}
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-red-600">Urgent:</span>
                   <button
@@ -386,38 +388,50 @@ export function VendorDashboard() {
                         </td>
                       </tr>
                     ) : (
-                      pos.map(po => (
-                        <tr key={po.id} className="hover:bg-gray-50 transition-colors">
-                          <TableCell value={po.po_number} columnName="po_number" />
-                          <TableCell value={po.po_date} columnName="po_date" type="date" />
-                          <TableCell value={po.type.replace('_', ' ')} columnName="type" />
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[po.status]}`}>
-                              {po.status.charAt(0) + po.status.slice(1).toLowerCase()}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`text-sm font-medium rounded-full px-2 py-1 ${po.vendor_status === 'acknowledged'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-400 text-white'
-                              }`}>
-                              {po.vendor_status === 'acknowledged' ? 'acknowledged' : 'not yet acknowledged'}
-                            </span>
-                          </td>
-                          <TableCell value={po.line_items_count} columnName="line_items" />
-                          <td className="px-4 py-3 whitespace-nowrap text-sm">
-                            <div className="flex items-center justify-center">
-                              <button
-                                onClick={() => navigate(`/vendor/pos/${po.id}`)}
-                                className="text-blue-600 hover:text-blue-800 font-medium flex items-center space-x-1"
-                              >
-                                <Eye className="w-4 h-4" />
-                                <span>View</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                      pos.map(po => {
+                        // Check if PO is older than 60 days
+                        const poDate = new Date(po.po_date);
+                        const sixtyDaysAgo = new Date();
+                        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+                        const isOldPO = poDate < sixtyDaysAgo;
+
+                        return (
+                          <tr
+                            key={po.id}
+                            className={`text-white transition-colors ${isOldPO ? 'bg-red-500' : ''}`}
+                          >
+                            <TableCell value={po.po_number} columnName="po_number" />
+                            <TableCell value={po.po_date} columnName="po_date" type="date" />
+                            <TableCell value={po.type.replace('_', ' ')} columnName="type" />
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[po.status]}`}>
+                                {po.status.charAt(0) + po.status.slice(1).toLowerCase()}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`text-sm font-medium rounded-full px-2 py-1 ${po.vendor_status === 'acknowledged'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-orange-400 text-white'
+                                }`}>
+                                {po.vendor_status === 'acknowledged' ? 'acknowledged' : 'not yet acknowledged'}
+                              </span>
+                            </td>
+                            <TableCell value={po.line_items_count} columnName="line_items" />
+                            <td className="px-4 py-3 whitespace-nowrap text-sm">
+                              <div className="flex items-center justify-center">
+                                <button
+                                  onClick={() => navigate(`/vendor/pos/${po.id}`)}
+                                  className={`font-medium flex items-center space-x-1 ${isOldPO ? 'text-white' : 'text-blue-600 hover:text-blue-800'
+                                    }`}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                  <span>View</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })
                     )}
                   </tbody>
                 </table>

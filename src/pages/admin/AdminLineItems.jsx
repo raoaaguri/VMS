@@ -300,8 +300,9 @@ export function AdminLineItems() {
                           {STATUSES.filter(status => !['Pending', 'Partially Delivered'].includes(status)).map(status => (
                             <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                               <input
-                                type="checkbox"
-                                checked={filters.status.includes(status)}
+                                type="date"
+                                format="dd/MM/yyyy"
+                                value={formatDateForInput(item.expected_delivery_date)}
                                 onChange={(e) => {
                                   if (e.target.checked) {
                                     setFilters({ ...filters, status: [...filters.status, status] });
@@ -328,9 +329,6 @@ export function AdminLineItems() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
                 >
                   <option value="ALL">All Priorities</option>
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
                   <option value="URGENT">Urgent</option>
                 </select>
               </div>
@@ -554,7 +552,7 @@ export function AdminLineItems() {
                           <TableCell value={item.quantity} columnName="quantity" />
                           <td className="px-4 py-3 whitespace-nowrap text-sm">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(item.line_priority)}`}>
-                              {item.line_priority}
+                              {item.line_priority == '' ? '-' : item.line_priority}
                             </span>
                           </td>
                           <TableCell value={item.expected_delivery_date} columnName="expected_delivery_date" type="date" />

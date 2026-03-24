@@ -4,50 +4,55 @@ export async function getAdminDashboardStats(req, res, next) {
   try {
     const db = getDbClient();
     const today = new Date().toISOString().split("T")[0];
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const monthStart = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      1,
+    )
       .toISOString()
       .split("T")[0];
-    const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
-    const yearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0];
 
-    // Delayed line items
-    const { count: delayedLineItemCount } = await db
-      .from("purchase_order_line_items")
-      .select("id", { count: "exact", head: true })
-      .lt("expected_delivery_date", today)
-      .neq("status", "DELIVERED");
+    // Get all POs for this month
+    const { data: allPOsThisMonth } = await db
+      .from("purchase_orders")
+      .select("status, po_date, updated_at")
+      .gte("po_date", monthStart);
 
-    // Delivering today
-    const { count: deliveringTodayCount } = await db
-      .from("purchase_order_line_items")
-      .select("id", { count: "exact", head: true })
-      .eq("expected_delivery_date", today)
-      .neq("status", "DELIVERED");
+    // Calculate completed PO stats
+    const completedPOs =
+      allPOsThisMonth?.filter((po) => po.status === "Fully Delivered") || [];
+    const completedOnTimePOs = completedPOs.filter((po) => {
+      const poDate = new Date(po.po_date);
+      const deliveredDate = new Date(po.updated_at);
+      const daysDiff = (deliveredDate - poDate) / (1000 * 60 * 60 * 24);
+      return daysDiff <= 60;
+    });
+    const completedDelayedPOs = completedPOs.filter((po) => {
+      const poDate = new Date(po.po_date);
+      const deliveredDate = new Date(po.updated_at);
+      const daysDiff = (deliveredDate - poDate) / (1000 * 60 * 60 * 24);
+      return daysDiff > 60;
+    });
 
-    // Delivered this week
-    const { count: deliveredThisWeekCount } = await db
-      .from("purchase_order_line_items")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "DELIVERED")
-      .gte("updated_at", weekAgo);
+    // Calculate pending PO stats
+    const pendingPOs =
+      allPOsThisMonth?.filter((po) => po.status === "Pending") || [];
+    const pendingAbove60POs = pendingPOs.filter(
+      (po) => po.po_date < sixtyDaysAgo,
+    );
+    const pendingBelow60POs = pendingPOs.filter(
+      (po) => po.po_date >= sixtyDaysAgo,
+    );
 
-    // Delivered this month
-    const { count: deliveredThisMonthCount } = await db
-      .from("purchase_order_line_items")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "DELIVERED")
-      .gte("updated_at", monthAgo);
-
-    // Delivered this year
-    const { count: deliveredThisYearCount } = await db
-      .from("purchase_order_line_items")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "DELIVERED")
-      .gte("updated_at", yearAgo);
+    // Calculate on-time rate
+    const totalCompletedPOs = completedPOs.length;
+    const onTimeRate =
+      totalCompletedPOs > 0
+        ? ((completedOnTimePOs.length / totalCompletedPOs) * 100).toFixed(1)
+        : "0.0";
 
     // Open POs by priority (only open items)
     const { data: posByPriority } = await db
@@ -62,22 +67,27 @@ export async function getAdminDashboardStats(req, res, next) {
 
     res.json({
       delayed_po_count: 0, // Would need complex aggregation
-      delivering_today_po_count: deliveringTodayCount || 0,
-      delayed_line_item_count: delayedLineItemCount || 0,
-      delivering_today_line_item_count: deliveringTodayCount || 0,
+      delivering_today_po_count: 0,
+      delayed_line_item_count: 0,
+      delivering_today_line_item_count: 0,
       delivered_po_counts: {
-        this_week: deliveredThisWeekCount || 0,
-        this_month: deliveredThisMonthCount || 0,
-        this_year: deliveredThisYearCount || 0,
+        this_week: 0,
+        this_month: 0,
+        this_year: 0,
       },
       delivered_line_item_counts: {
-        this_week: deliveredThisWeekCount || 0,
-        this_month: deliveredThisMonthCount || 0,
-        this_year: deliveredThisYearCount || 0,
+        this_week: 0,
+        this_month: 0,
+        this_year: 0,
       },
       average_delay_days: 0,
-      on_time_delivery_rate: 100,
+      on_time_delivery_rate: parseFloat(onTimeRate),
       open_pos_by_priority: priorityCounts,
+      // New fields
+      completed_on_time_pos: completedOnTimePOs.length,
+      completed_delayed_pos: completedDelayedPOs.length,
+      pending_above_60_days_pos: pendingAbove60POs.length,
+      pending_below_60_days_pos: pendingBelow60POs.length,
     });
   } catch (error) {
     next(error);
@@ -88,45 +98,61 @@ export async function getVendorDashboardStats(req, res, next) {
   try {
     const { vendor_id } = req.user;
     const db = getDbClient();
-    const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const monthStart = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      1,
+    )
+      .toISOString()
+      .split("T")[0];
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0];
 
-    console.log("🔍 Vendor Dashboard Debug:", { vendor_id, monthAgo });
+    console.log("🔍 Vendor Dashboard Debug:", {
+      vendor_id,
+      monthStart,
+      sixtyDaysAgo,
+    });
 
-    // Get vendor's delivered items in last 30 days
-    try {
-      const { data: vendorItems } = await db
-        .from("purchase_order_line_items")
-        .select("expected_delivery_date, updated_at")
-        .eq("status", "DELIVERED")
-        .gte("updated_at", monthAgo)
-        .eq("purchase_orders.vendor_id", vendor_id);
+    // Get vendor's POs for this month
+    const { data: vendorPOsThisMonth } = await db
+      .from("purchase_orders")
+      .select("status, po_date, updated_at")
+      .eq("vendor_id", vendor_id)
+      .gte("po_date", monthStart);
 
-      console.log(
-        "🔍 Vendor Delivered Items:",
-        vendorItems?.length || 0,
-        vendorItems,
-      );
+    console.log(
+      "🔍 Vendor POs This Month:",
+      vendorPOsThisMonth?.length || 0,
+      vendorPOsThisMonth,
+    );
 
-      // Count on-time vs delayed
-      let onTimeCount = 0;
-      let delayedCount = 0;
-      vendorItems?.forEach((item) => {
-        const expectedDate = new Date(item.expected_delivery_date);
-        const actualDate = new Date(item.updated_at);
-        if (expectedDate >= actualDate) {
-          onTimeCount++;
-        } else {
-          delayedCount++;
-        }
-      });
-    } catch (deliveredError) {
-      console.error("❌ Error fetching delivered items:", deliveredError);
-      // Continue with zero counts
-      var onTimeCount = 0;
-      var delayedCount = 0;
-    }
+    // Calculate completed PO stats
+    const completedPOs =
+      vendorPOsThisMonth?.filter((po) => po.status === "Fully Delivered") || [];
+    const completedOnTimePOs = completedPOs.filter((po) => {
+      const poDate = new Date(po.po_date);
+      const deliveredDate = new Date(po.updated_at);
+      const daysDiff = (deliveredDate - poDate) / (1000 * 60 * 60 * 24);
+      return daysDiff <= 60;
+    });
+    const completedDelayedPOs = completedPOs.filter((po) => {
+      const poDate = new Date(po.po_date);
+      const deliveredDate = new Date(po.updated_at);
+      const daysDiff = (deliveredDate - poDate) / (1000 * 60 * 60 * 24);
+      return daysDiff > 60;
+    });
+
+    // Calculate pending PO stats
+    const pendingPOs =
+      vendorPOsThisMonth?.filter((po) => po.status === "Pending") || [];
+    const pendingAbove60POs = pendingPOs.filter(
+      (po) => po.po_date < sixtyDaysAgo,
+    );
+    const pendingBelow60POs = pendingPOs.filter(
+      (po) => po.po_date >= sixtyDaysAgo,
+    );
 
     // Get ALL PO line items by priority for vendor (only open items)
     try {
@@ -172,8 +198,14 @@ export async function getVendorDashboardStats(req, res, next) {
       });
 
       res.json({
-        on_time_line_item_count_this_month: onTimeCount,
-        delayed_line_item_count_this_month: delayedCount,
+        // New PO-based fields
+        completed_on_time_pos: completedOnTimePOs.length,
+        completed_delayed_pos: completedDelayedPOs.length,
+        pending_above_60_days_pos: pendingAbove60POs.length,
+        pending_below_60_days_pos: pendingBelow60POs.length,
+        // Existing fields
+        on_time_line_item_count_this_month: completedOnTimePOs.length, // Updated to match PO logic
+        delayed_line_item_count_this_month: completedDelayedPOs.length, // Updated to match PO logic
         open_pos_by_priority: priorityCounts,
       });
     } catch (priorityError) {

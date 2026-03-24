@@ -265,8 +265,8 @@ export function AdminDashboard() {
 
 
         {!loadingStats && stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Delayed POs</p>
@@ -298,6 +298,32 @@ export function AdminDashboard() {
                 </div>
                 <div className="bg-green-100 rounded-full p-3">
                   <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </div> */}
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className=" font-medium text-gray-600 pb-3">Completed (This Month)</p>
+                  <p className="text-sm text-gray-600">Completed on-time : {stats.completed_on_time_pos}</p>
+                  <p className="text-sm text-gray-600">Completed delayed : {stats.completed_delayed_pos}</p>
+                </div>
+                <div className="bg-green-100 rounded-full p-3">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className=" font-medium text-gray-600 pb-3">Pending (This Month)</p>
+                  <p className="text-sm text-gray-600">Pending above 60 days : {stats.pending_above_60_days_pos}</p>
+                  <p className="text-sm text-gray-600">Pending below 60 days : {stats.pending_below_60_days_pos}</p>
+                </div>
+                <div className="bg-red-100 rounded-full p-3">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
                 </div>
               </div>
             </div>
@@ -395,8 +421,9 @@ export function AdminDashboard() {
                         {STATUSES.filter(status => !['Pending', 'Partially Delivered'].includes(status)).map(status => (
                           <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                             <input
-                              type="checkbox"
-                              checked={statusFilter.includes(status)}
+                              type="date"
+                              format="dd/MM/yyyy"
+                              value={formatDateForInput(item.expected_delivery_date)}
                               onChange={(e) => {
                                 if (e.target.checked) {
                                   setStatusFilter([...statusFilter, status]);
