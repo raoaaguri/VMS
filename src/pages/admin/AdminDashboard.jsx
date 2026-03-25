@@ -305,7 +305,7 @@ export function AdminDashboard() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className=" font-medium text-gray-600 pb-3">Completed (This Month)</p>
+                  <p className=" font-medium text-gray-600 pb-3">Completed </p>
                   <p className="text-sm text-gray-600">Completed on-time : {stats.completed_on_time_pos}</p>
                   <p className="text-sm text-gray-600">Completed delayed : {stats.completed_delayed_pos}</p>
                 </div>
@@ -318,7 +318,7 @@ export function AdminDashboard() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className=" font-medium text-gray-600 pb-3">Pending (This Month)</p>
+                  <p className=" font-medium text-gray-600 pb-3">Pending </p>
                   <p className="text-sm text-gray-600">Pending above 60 days : {stats.pending_above_60_days_pos}</p>
                   <p className="text-sm text-gray-600">Pending below 60 days : {stats.pending_below_60_days_pos}</p>
                 </div>

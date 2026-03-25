@@ -4,26 +4,18 @@ export async function getAdminDashboardStats(req, res, next) {
   try {
     const db = getDbClient();
     const today = new Date().toISOString().split("T")[0];
-    const monthStart = new Date(
-      new Date().getFullYear(),
-      new Date().getMonth(),
-      1,
-    )
-      .toISOString()
-      .split("T")[0];
     const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0];
 
-    // Get all POs for this month
-    const { data: allPOsThisMonth } = await db
+    // Get ALL POs (removed month filtering)
+    const { data: allPOs } = await db
       .from("purchase_orders")
-      .select("status, po_date, updated_at")
-      .gte("po_date", monthStart);
+      .select("status, po_date, updated_at");
 
     // Calculate completed PO stats
     const completedPOs =
-      allPOsThisMonth?.filter((po) => po.status === "Fully Delivered") || [];
+      allPOs?.filter((po) => po.status === "Fully Delivered") || [];
     const completedOnTimePOs = completedPOs.filter((po) => {
       const poDate = new Date(po.po_date);
       const deliveredDate = new Date(po.updated_at);
@@ -38,8 +30,7 @@ export async function getAdminDashboardStats(req, res, next) {
     });
 
     // Calculate pending PO stats
-    const pendingPOs =
-      allPOsThisMonth?.filter((po) => po.status === "Pending") || [];
+    const pendingPOs = allPOs?.filter((po) => po.status === "Pending") || [];
     const pendingAbove60POs = pendingPOs.filter(
       (po) => po.po_date < sixtyDaysAgo,
     );
@@ -98,39 +89,26 @@ export async function getVendorDashboardStats(req, res, next) {
   try {
     const { vendor_id } = req.user;
     const db = getDbClient();
-    const monthStart = new Date(
-      new Date().getFullYear(),
-      new Date().getMonth(),
-      1,
-    )
-      .toISOString()
-      .split("T")[0];
     const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0];
 
     console.log("🔍 Vendor Dashboard Debug:", {
       vendor_id,
-      monthStart,
       sixtyDaysAgo,
     });
 
-    // Get vendor's POs for this month
-    const { data: vendorPOsThisMonth } = await db
+    // Get ALL vendor's POs (removed month filtering)
+    const { data: vendorPOs } = await db
       .from("purchase_orders")
       .select("status, po_date, updated_at")
-      .eq("vendor_id", vendor_id)
-      .gte("po_date", monthStart);
+      .eq("vendor_id", vendor_id);
 
-    console.log(
-      "🔍 Vendor POs This Month:",
-      vendorPOsThisMonth?.length || 0,
-      vendorPOsThisMonth,
-    );
+    console.log("🔍 Vendor POs Total:", vendorPOs?.length || 0, vendorPOs);
 
     // Calculate completed PO stats
     const completedPOs =
-      vendorPOsThisMonth?.filter((po) => po.status === "Fully Delivered") || [];
+      vendorPOs?.filter((po) => po.status === "Fully Delivered") || [];
     const completedOnTimePOs = completedPOs.filter((po) => {
       const poDate = new Date(po.po_date);
       const deliveredDate = new Date(po.updated_at);
@@ -145,8 +123,7 @@ export async function getVendorDashboardStats(req, res, next) {
     });
 
     // Calculate pending PO stats
-    const pendingPOs =
-      vendorPOsThisMonth?.filter((po) => po.status === "Pending") || [];
+    const pendingPOs = vendorPOs?.filter((po) => po.status === "Pending") || [];
     const pendingAbove60POs = pendingPOs.filter(
       (po) => po.po_date < sixtyDaysAgo,
     );
@@ -204,8 +181,8 @@ export async function getVendorDashboardStats(req, res, next) {
         pending_above_60_days_pos: pendingAbove60POs.length,
         pending_below_60_days_pos: pendingBelow60POs.length,
         // Existing fields
-        on_time_line_item_count_this_month: completedOnTimePOs.length, // Updated to match PO logic
-        delayed_line_item_count_this_month: completedDelayedPOs.length, // Updated to match PO logic
+        on_time_line_item_count: completedOnTimePOs.length, // Updated to match PO logic
+        delayed_line_item_count: completedDelayedPOs.length, // Updated to match PO logic
         open_pos_by_priority: priorityCounts,
       });
     } catch (priorityError) {
