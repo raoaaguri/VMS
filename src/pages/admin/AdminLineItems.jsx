@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Package, ChevronDown, Filter } from 'lucide-react';
 import { Layout } from '../../components/Layout';
 import { TableCell, TableHeader } from '../../components/TableComponents';
-import { formatDate, formatPrice, formatCurrency } from '../../utils/formatters';
+import { formatDate, formatPrice, formatCurrency, formatDateForInput } from '../../utils/formatters';
 import { api } from '../../config/api';
 import { useSortableTable } from '../../hooks/useSortableTable';
 
@@ -29,9 +29,11 @@ export function AdminLineItems() {
     vendor_id: 'ALL',
     month: 'ALL',
     itemName: '',
+    category: 'ALL',
   });
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [availableItemNames, setAvailableItemNames] = useState([]);
+  const [availableCategories, setAvailableCategories] = useState([]);
   const { sortedData, requestSort, getSortIcon } = useSortableTable(lineItems, {
     defaultSortKey: 'product_name',
     defaultDirection: 'asc'
@@ -40,6 +42,7 @@ export function AdminLineItems() {
   useEffect(() => {
     fetchLineItems();
     fetchAllItemNames(); // Fetch all items for dropdown
+    fetchAllCategories(); // Fetch all categories for dropdown
   }, [filters, page, pageSize]);
 
   useEffect(() => {
@@ -50,6 +53,8 @@ export function AdminLineItems() {
     if (allLineItems.length > 0) {
       const itemNames = [...new Set(allLineItems.map(item => item.product_name).filter(Boolean))].sort();
       setAvailableItemNames(itemNames);
+      const categories = [...new Set(allLineItems.map(item => item.category).filter(Boolean))].sort();
+      setAvailableCategories(categories);
     }
   }, [allLineItems]);
 
@@ -161,6 +166,7 @@ export function AdminLineItems() {
       if (filters.priority !== 'ALL') params.priority = filters.priority;
       if (filters.vendor_id !== 'ALL') params.vendor_id = filters.vendor_id;
       if (filters.itemName && filters.itemName !== '') params.items_name = filters.itemName;
+      if (filters.category !== 'ALL') params.category = filters.category;
 
       // Add month filter date range
       if (filters.month && filters.month !== 'ALL') {
@@ -191,6 +197,17 @@ export function AdminLineItems() {
       setAllLineItems(response.items || []);
     } catch (error) {
       console.error('Failed to fetch all item names:', error);
+    }
+  };
+
+  const fetchAllCategories = async () => {
+    try {
+      const params = { limit: 10000 }; // Get all items for categories
+      const response = await api.admin.getLineItems(params);
+      const categories = [...new Set(response.items?.map(item => item.category).filter(Boolean))].sort();
+      setAvailableCategories(categories);
+    } catch (error) {
+      console.error('Failed to fetch all categories:', error);
     }
   };
 
@@ -244,8 +261,8 @@ export function AdminLineItems() {
         </div>
 
         <div className="bg-white rounded-lg shadow p-3">
-          <div className="flex gap-4 mb-4 justify-between items-end">
-            <div className="flex items-center gap-x-4">
+          <div className="flex gap-2 mb-4 justify-between items-end">
+            <div className="flex items-center gap-x-2">
               <div className="flex items-center space-x-2">
                 <div>
                   <div className="relative status-dropdown-container">
@@ -300,9 +317,8 @@ export function AdminLineItems() {
                           {STATUSES.filter(status => !['Pending', 'Partially Delivered'].includes(status)).map(status => (
                             <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                               <input
-                                type="date"
-                                format="dd/MM/yyyy"
-                                value={formatDateForInput(item.expected_delivery_date)}
+                                type="checkbox"
+                                checked={filters.status.includes(status)}
                                 onChange={(e) => {
                                   if (e.target.checked) {
                                     setFilters({ ...filters, status: [...filters.status, status] });
@@ -460,13 +476,27 @@ export function AdminLineItems() {
                   ))}
                 </select>
               </div>
+
+              {/* Category Filter */}
+              <div className="">
+                <select
+                  value={filters.category}
+                  onChange={(e) => updateFilters({ ...filters, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-gray-300"
+                >
+                  <option value="ALL">All Categories</option>
+                  {availableCategories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <button onClick={() => {
-              updateFilters({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', vendor_id: 'ALL', month: 'ALL', itemName: '' });
+              updateFilters({ status: ['Pending', 'Partially Delivered'], priority: 'ALL', vendor_id: 'ALL', month: 'ALL', itemName: '', category: 'ALL' });
               setVendorSearchTerm('');
               setShowVendorDropdown(false);
               setShowMonthDropdown(false);
-            }} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
+            }} className="bg-blue-500 text-white px-2 py-2 rounded-lg hover:bg-blue-600 transition-colors">Clear Filters</button>
           </div>
 
           {loading ? (
@@ -511,6 +541,11 @@ export function AdminLineItems() {
                         </th>
                         <th
                           className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        >
+                          Category
+                        </th>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                           onClick={() => requestSort('quantity')}
                         >
                           Quantity {getSortIcon('quantity')}
@@ -549,6 +584,7 @@ export function AdminLineItems() {
                           <TableCell value={item.vendor_name} columnName="vendor_name" />
                           <TableCell value={parseInt(item.product_code) || 0} columnName="product_code" />
                           <TableCell value={item.product_name} columnName="product_name" />
+                          <TableCell value={item.category} columnName="category" />
                           <TableCell value={item.quantity} columnName="quantity" />
                           <td className="px-4 py-3 whitespace-nowrap text-sm">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(item.line_priority)}`}>

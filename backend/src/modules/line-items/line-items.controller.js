@@ -9,6 +9,7 @@ export async function getAdminLineItems(req, res, next) {
       start_date,
       end_date,
       items_name,
+      category,
       page = 1,
       limit = 10,
     } = req.query;
@@ -81,6 +82,12 @@ export async function getAdminLineItems(req, res, next) {
     if (items_name && items_name.trim() !== "") {
       conditions.push(`poli.product_name = $${paramNum++}`);
       params.push(items_name.trim());
+    }
+
+    // Apply category filter
+    if (category && category.trim() !== "") {
+      conditions.push(`poli.category = $${paramNum++}`);
+      params.push(category.trim());
     }
 
     const whereClause =

@@ -798,7 +798,7 @@ export function VendorPoDetail() {
                     <div className="flex items-center space-x-2">
                       <input
                         type="date"
-                        format="dd/MM/yyyy"
+                        format="dd/mmm/yyyy"
                         value={tempPoExpectedDate}
                         onChange={(e) => setTempPoExpectedDate(e.target.value)}
                         className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-300"
@@ -893,7 +893,7 @@ export function VendorPoDetail() {
               <div className="flex items-center space-x-3">
                 <input
                   type="date"
-                  format="dd/MM/yyyy"
+                  format="dd/mmm/yyyy"
                   placeholder="Set common date for all items"
                   onChange={(e) => {
                     if (e.target.value) {

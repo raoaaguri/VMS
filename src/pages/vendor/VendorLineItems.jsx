@@ -36,6 +36,7 @@ export function VendorLineItems() {
   useEffect(() => {
     fetchLineItems();
     fetchAllItemNames(); // Fetch all items for dropdown
+    fetchAllCategories(); // Fetch all categories for dropdown
   }, [filters, page, pageSize]);
 
   useEffect(() => {
@@ -102,6 +103,17 @@ export function VendorLineItems() {
       setAllLineItems(response.items || []);
     } catch (error) {
       console.error('Failed to fetch all item names:', error);
+    }
+  };
+
+  const fetchAllCategories = async () => {
+    try {
+      const params = { limit: 10000 }; // Get all items for categories
+      const response = await api.vendor.getLineItems(params);
+      const categories = [...new Set(response.items?.map(item => item.category).filter(Boolean))].sort();
+      setAvailableCategories(categories);
+    } catch (error) {
+      console.error('Failed to fetch all categories:', error);
     }
   };
 
@@ -285,6 +297,20 @@ export function VendorLineItems() {
                 </select>
               </div>
 
+              {/* Category Filter */}
+              <div className="">
+                <select
+                  value={filters.category}
+                  onChange={(e) => updateFilters({ ...filters, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="ALL">All Categories</option>
+                  {availableCategories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
+
 
             </div>
             <button onClick={() => {
@@ -325,6 +351,11 @@ export function VendorLineItems() {
                           onClick={() => requestSort('product_name')}
                         >
                           Item Name {getSortIcon('product_name')}
+                        </th>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Category
                         </th>
                         <th
                           className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -371,6 +402,7 @@ export function VendorLineItems() {
                           </td>
                           <TableCell value={parseInt(item.product_code) || 0} columnName="product_code" />
                           <TableCell value={item.product_name} columnName="product_name" />
+                          <TableCell value={item.category} columnName="category" />
                           <TableCell value={item.quantity} columnName="quantity" />
                           <TableCell value={item.received_qty || 0} columnName="received_qty" />
                           <td className="px-4 py-3 whitespace-nowrap text-sm">

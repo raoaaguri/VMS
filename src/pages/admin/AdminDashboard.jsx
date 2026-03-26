@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { TableCell, TableHeader } from '../../components/TableComponents';
-import { formatDate, formatPrice, formatCurrency } from '../../utils/formatters';
+import { formatDate, formatPrice, formatCurrency, formatDateForInput } from '../../utils/formatters';
 import { api } from '../../config/api';
 import { Toast, useToast } from '../../components/Toast';
 import { useSortableTable } from '../../hooks/useSortableTable';
@@ -265,7 +265,7 @@ export function AdminDashboard() {
 
 
         {!loadingStats && stats && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -340,7 +340,16 @@ export function AdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6 col-span-full">
+            <div className="bg-red-50 p-4 rounded-lg flex flex-col">
+              <p className="text-sm font-medium text-red-500">Priority of PO's</p>
+
+              <div className="flex flex-col items-center justify-center">
+                <p className="text-2xl font-bold text-red-600">{stats.open_pos_by_priority.URGENT}</p>
+                <p className="text-sm text-red-500 mt-1">Urgent</p>
+              </div>
+            </div>
+
+            {/* <div className="bg-white rounded-lg shadow p-6 col-span-full">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Open POs by Priority</h3>
               <div className="grid grid-cols-4 gap-4">
                 <div className="text-center p-4 bg-gray-50 rounded-lg">
@@ -360,7 +369,7 @@ export function AdminDashboard() {
                   <p className="text-sm text-red-500 mt-1">Urgent</p>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         )}
 
@@ -421,9 +430,8 @@ export function AdminDashboard() {
                         {STATUSES.filter(status => !['Pending', 'Partially Delivered'].includes(status)).map(status => (
                           <label key={status} className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                             <input
-                              type="date"
-                              format="dd/MM/yyyy"
-                              value={formatDateForInput(item.expected_delivery_date)}
+                              type="checkbox"
+                              checked={statusFilter.includes(status)}
                               onChange={(e) => {
                                 if (e.target.checked) {
                                   setStatusFilter([...statusFilter, status]);

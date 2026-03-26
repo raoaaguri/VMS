@@ -731,7 +731,7 @@ export function VendorPriorityLineItems() {
                           <td className="px-4 py-3 text-sm">
                             <input
                               type="date"
-                              format="dd/MM/yyyy"
+                              format="dd/mmm/yyyy"
                               value={formatDateForInput(item.expected_delivery_date)}
                               onChange={(e) => handleUpdateExpectedDate(po?.id, item.id, e.target.value)}
                               className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-sm w-full"
