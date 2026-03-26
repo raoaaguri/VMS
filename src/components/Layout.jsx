@@ -40,9 +40,9 @@ export function Layout({ children, role }) {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-8">
               <div className="flex items-center space-x-3">
-                <img src={kushalsLogo} alt="VMS Logo" className="w-20" />
+                <img src={kushalsLogo} alt="VMS Logo" className="w-30" />
                 <div>
-                  <h1 className="text-xl font-semibold text-gray-900">
+                  <h1 className="text-lg font-semibold text-gray-900">
                     Vendor Management System
                   </h1>
                   <p className="text-sm text-gray-500">
