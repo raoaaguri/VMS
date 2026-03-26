@@ -341,7 +341,7 @@ export function AdminDashboard() {
             </div>
 
             <div className="bg-red-50 p-4 rounded-lg flex flex-col">
-              <p className="text-sm font-medium text-red-500">Priority of PO's</p>
+              <p className="text-sm font-medium text-red-500">Open PO Line Items by Priority</p>
 
               <div className="flex flex-col items-center justify-center">
                 <p className="text-2xl font-bold text-red-600">{stats.open_pos_by_priority.URGENT}</p>

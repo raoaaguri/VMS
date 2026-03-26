@@ -45,15 +45,18 @@ export async function getAdminDashboardStats(req, res, next) {
         ? ((completedOnTimePOs.length / totalCompletedPOs) * 100).toFixed(1)
         : "0.0";
 
-    // Open POs by priority (only open items)
-    const { data: posByPriority } = await db
-      .from("purchase_orders")
-      .select("priority")
+    // Open POs by priority (only open line items)
+    const { data: lineItemsByPriority } = await db
+      .from("purchase_order_line_items")
+      .select("line_priority")
       .in("status", ["Pending", "Partially Delivered"]); // Only open items
 
     const priorityCounts = { LOW: 0, MEDIUM: 0, HIGH: 0, URGENT: 0 };
-    posByPriority?.forEach((po) => {
-      priorityCounts[po.priority] = (priorityCounts[po.priority] || 0) + 1;
+    lineItemsByPriority?.forEach((item) => {
+      if (item.line_priority) {
+        priorityCounts[item.line_priority] =
+          (priorityCounts[item.line_priority] || 0) + 1;
+      }
     });
 
     res.json({
