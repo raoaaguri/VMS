@@ -815,7 +815,7 @@ export function VendorPoDetail() {
                           setEditingPoExpectedDate(false);
                           setTempPoExpectedDate('');
                         }}
-                        className="px-2 py-1 text-xs rounded-full text-white hover:text-gray-900 bg-red-500"
+                        className="px-2 py-1 text-xs rounded-full text-white bg-red-500"
                       >
                         Cancel
                       </button>
